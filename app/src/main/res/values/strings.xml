@@ -1,0 +1,420 @@
+<resources>
+    <string name="app_name">Cee</string>
+    <string name="welcome">Welcome</string>
+
+    <string name="oneboarding_one_title">Drive in Peace</string>
+    <string name="oneboarding_one_description">is here to help you avoid speed cameras, traffic, accidents and other distractions so you can enjoy a stable ride.</string>
+
+    <string name="oneboarding_two_title">Safer together</string>
+    <string name="oneboarding_two_description">Join the Cee community to get alerts from thousands of users and alert others about possible obstacles on your journey.</string>
+
+    <string name="oneboarding_three_title">Data driven</string>
+    <string name="text_fullname">Full Name</string>
+    <string name="oneboarding_three_description">Get accurate data about your average speed, distance travelled and number of alerts.</string>
+
+    <string name="main_screen_ad_banner_id" translatable="false">ca-app-pub-4444093850770924/8201034359</string>
+    <string name="speedometer_screen_ad_banner_id" translatable="false">ca-app-pub-4444093850770924/4070217658</string>
+    <string name="remove_ads_rewarded_video_id" translatable="false">ca-app-pub-4444093850770924/7925664194</string>
+    <string name="interstitial_ad_three_stop_id" translatable="false">ca-app-pub-4444093850770924/1767449952</string>
+
+
+
+
+    <string name="title_activity_home" translatable="false">HomeActivity</string>
+    <string name="title_activity_speed" translatable="false">SpeedActivity</string>
+    <string name="mapbox_access_token" translatable="false">pk.eyJ1Ijoib3JiaXRhbC1jZWUiLCJhIjoiY2wxZGl4amx5MDFzcjNibWlwOHE1M3ZjdCJ9.1SwD-p7ETBXAd0rJdEfXVw</string>
+    <string name="web_client_id" translatable="false">663760174892-5efvv857phnq16jdd93meubdgnik7n7n.apps.googleusercontent.com</string>
+    <string name="title_activity_maps" translatable="false">MapsActivity</string>
+    <string name="facebook_app_id" translatable="false">1529521810830767</string>
+    <string name="fb_login_protocol_scheme" translatable="false">fb1529521810830767</string>
+    <string name="facebook_client_token" translatable="false">fe4e1593d80a994129bb3244777dd492</string>
+    <string name="btn_appMenu_alert_no">No</string>
+    <string name="btn_appMenu_alert_yes">Yes</string>
+    <string name="btn_appMenu_support_help">Help</string>
+    <string name="btn_appMenu_support_privacy">Privacy &amp; Policy</string>
+    <string name="btn_appMenu_support_sign_out">Sign Out</string>
+    <string name="btn_arabic_lang">العربیة</string>
+    <string name="btn_auth_alert_ok">Okay</string>
+    <string name="btn_auth_continue_with_Apple">Continue with Apple</string>
+    <string name="btn_auth_continue_with_facebook">Continue with Facebook</string>
+    <string name="btn_auth_continue_with_google">Continue with Google</string>
+    <string name="btn_auth_continue_with_phone">Continue with phone</string>
+    <string name="btn_english_lang">English</string>
+    <string name="btn_home_adFree_sheet_done">Done</string>
+    <string name="btn_home_adFree_sheet_dont_remove_ad">Don\'t remove ads</string>
+    <string name="btn_home_adFree_sheet_watch_ad">Watch Video Ad</string>
+    <string name="btn_home_alert_done">Done</string>
+    <string name="btn_home_alert_reportConfirmation_no">No</string>
+    <string name="btn_home_alert_reportConfirmation_yes">Yes</string>
+    <string name="btn_home_report_action_sheet_carCrash">Car Crash</string>
+    <string name="btn_home_report_action_sheet_construction">Construction</string>
+    <string name="btn_home_report_action_sheet_p2pCam">P2P Camera</string>
+    <string name="btn_home_report_action_sheet_police">Checkpoint</string>
+    <string name="btn_home_report_action_sheet_roadCam">Road Camera</string>
+    <string name="btn_home_report_action_sheet_staticCam">Static Camera</string>
+    <string name="btn_home_report_feedback_sheet_dislike_report">Not there</string>
+    <string name="btn_home_report_feedback_sheet_like_report">It\'s there</string>
+    <string name="btn_home_sound_sheet_close">Close</string>
+    <string name="btn_home_sound_sheet_soundOff">Off</string>
+    <string name="btn_home_sound_sheet_soundOn">On</string>
+    <string name="btn_home_sound_sheet_vibrationOnly">Vibration Only</string>
+    <string name="btn_kurdish_so_lang">کوردی سۆرانی</string>
+    <string name="btn_onboarding_skip">Skip</string>
+    <string name="btn_setting_alert_delete_account">DELETE ACCOUNT</string>
+    <string name="btn_setting_alert_delete_account_no">No</string>
+    <string name="btn_setting_alert_delete_account_yes">Yes</string>
+    <string name="btn_setting_appBar_cancel">Cancel</string>
+    <string name="btn_setting_appBar_done">Done</string>
+    <string name="btn_setting_genderPicker_female">Female</string>
+    <string name="btn_setting_genderPicker_male">Male</string>
+    <string name="btn_speedometer_end_trip">End Trip</string>
+    <string name="btn_speedometer_start_trip">Start Trip</string>
+    <string name="btn_trip_history_detail_alert_cencel">Cancel</string>
+    <string name="btn_trip_history_detail_alert_delete">Delete</string>
+    <string name="btn_trip_history_detail_delete_trip">DELETE TRIP</string>
+    <string name="btn_turkish_lang">Turkish</string>
+    <string name="btn_verif_verify">Verify</string>
+    <string name="Cancel">Cancel</string>
+    <string name="lbl_about_appBar_title">About</string>
+    <string name="lbl_appMenu_alert_title">Are you sure you want to sign out</string>
+    <string name="lbl_appMenu_statistic_alert_count">Alerted</string>
+    <string name="lbl_appMenu_statistic_distance">Distance</string>
+    <string name="lbl_appMenu_statistic_max_speed">Max Speed</string>
+    <string name="lbl_appMenu_statistic_report_count">Reported</string>
+    <string name="lbl_appMenu_statistic_title">Statistic</string>
+    <string name="lbl_appMenu_support_title">Support</string>
+    <string name="lbl_auth_or">Or</string>
+    <string name="lbl_cee">Cee</string>
+    <string name="lbl_change_picture">CHANGE PICTURE</string>
+    <string name="lbl_FAQ_appBar_title">Help</string>
+    <string name="lbl_history_appBar_title">History</string>
+    <string name="lbl_home_adFree_sheet_freeOfAds_description">Enjoy using Cee App with no Ads! for</string>
+    <string name="lbl_home_adFree_sheet_freeOfAds_description_minutes">minutes</string>
+    <string name="lbl_home_adFree_sheet_freeOfAds_title">You\'r Ad Free</string>
+    <string name="lbl_home_adFree_sheet_removeAds_description">Watch a video Ad to get an Ad Free experiance for 30 minutes!</string>
+    <string name="lbl_home_adFree_sheet_removeAds_title">Remove Ads</string>
+    <string name="lbl_home_alert_reportConfirmation_title">Are you sure you want to place this action on map?</string>
+    <string name="lbl_home_alert_trip_start_continue_trip">Continue Trip</string>
+    <string name="lbl_home_alert_trip_start_start_new_trip">Start New trip</string>
+    <string name="lbl_home_alert_trip_start_title">Do you want to continue the trip or start a new one?</string>
+    <string name="lbl_home_alert_username_description">Please enter your name to complete registartion</string>
+    <string name="lbl_home_alert_username_title">Finish Registration</string>
+    <string name="lbl_home_bottom_toast_inside_zone">You\'re inside a report zone</string>
+    <string name="lbl_home_end_trip">END TRIP</string>
+    <string name="lbl_home_quickFeedback_report_type_carCrash">Car Crash</string>
+    <string name="lbl_home_quickFeedback_report_type_construction">Construction</string>
+    <string name="lbl_home_quickFeedback_report_type_p2pCam">P2P Camera</string>
+    <string name="lbl_home_quickFeedback_report_type_police">Checkpoint</string>
+    <string name="lbl_home_quickFeedback_report_type_roadCam">Road Camera</string>
+    <string name="lbl_home_quickFeedback_report_type_staticCam">Static Camera</string>
+    <string name="lbl_home_quickFeedback_title_s1">You\'ve passed by a</string>
+    <string name="lbl_home_quickFeedback_title_s2">Give feedback if the location was correct.</string>
+    <string name="lbl_home_report_action_sheet_footer">Help us with updating the map and be a Cee moderator!</string>
+    <string name="lbl_home_report_action_sheet_title">Update the Cee Map</string>
+    <string name="lbl_home_report_feedback_sheet_description">Your rating help us improve</string>
+    <string name="lbl_home_report_feedback_sheet_report_type_carCrash">Car Crash</string>
+    <string name="lbl_home_report_feedback_sheet_report_type_construction">Construction</string>
+    <string name="lbl_home_report_feedback_sheet_report_type_p2pCam">P2P Camera</string>
+    <string name="lbl_home_report_feedback_sheet_report_type_police">Checkpoint</string>
+    <string name="lbl_home_report_feedback_sheet_report_type_roadCam">Road Camera</string>
+    <string name="lbl_home_report_feedback_sheet_report_type_staticCam">Static Camera</string>
+    <string name="lbl_home_report_feedback_sheet_tag_distanceAway">Away</string>
+    <string name="lbl_home_report_feedback_sheet_title_approve">Approve</string>
+    <string name="lbl_home_report_feedback_sheet_title_location">location?</string>
+    <string name="lbl_home_sound_sheet_title">Sound Settings</string>
+    <string name="lbl_home_start_trip">START TRIP</string>
+    <string name="lbl_language_setting_appBar_title">Language</string>
+    <string name="lbl_privacy_appBar_title">Privacy &amp; Policy</string>
+    <string name="lbl_remove_ads">Remove Ads</string>
+    <string name="lbl_setting_alert_delete_account_description">By clicking Yes you will delete your account perminantly and you will not be able to recover it!</string>
+    <string name="lbl_setting_alert_delete_account_title">Are you sure to delete your account?</string>
+    <string name="lbl_setting_appBar_title">Settings</string>
+    <string name="lbl_setting_genderPicker_title">Gender</string>
+    <string name="lbl_setting_general_about">About</string>
+    <string name="lbl_setting_general_language">Language</string>
+    <string name="lbl_setting_general_sound_setting">Sound Settings</string>
+    <string name="lbl_setting_general_title">General</string>
+    <string name="lbl_setting_title_profile">Profile</string>
+    <string name="lbl_sound_setting_appBar_title">Sound Setting</string>
+    <string name="lbl_speedometer_trip_avg_speed">AVG Speed</string>
+    <string name="lbl_speedometer_trip_distance">Distance</string>
+    <string name="lbl_speedometer_trip_duration">Duration</string>
+    <string name="lbl_speedometer_trip_duration_hour">Hours</string>
+    <string name="lbl_speedometer_trip_max_speed">MAX Speed</string>
+    <string name="lbl_trip_history_detail_alert_count">Alert</string>
+    <string name="lbl_trip_history_detail_alert_description">By Clicking yes you will delete this trip and you will not be able to recover it</string>
+    <string name="lbl_trip_history_detail_alert_title">Delete trip</string>
+    <string name="lbl_trip_history_detail_appBar_title">Trip</string>
+    <string name="lbl_trip_history_detail_avg_speed">AVG Speed</string>
+    <string name="lbl_trip_history_detail_distance">Distance</string>
+    <string name="lbl_trip_history_detail_duration">Duration</string>
+    <string name="lbl_trip_history_detail_max_speed">Max SPeed</string>
+    <string name="lbl_trip_history_detail_subtitle">Trip</string>
+    <string name="lbl_trip_history_detail_title">Trip Statistic</string>
+    <string name="lbl_verif_code_sent">Code Sent</string>
+    <string name="lbl_verif_code_sent_message">"Please check your messages a verification code is sent to your phone number at: "</string>
+    <string name="lbl_verif_resend_code">Resend Code</string>
+    <string name="txtF_phone_number_hint">123 456 7890</string>
+    <string name="txtF_setting_email">Email</string>
+    <string name="txtF_setting_name">Name</string>
+    <string name="txtF_setting_number">Number</string>
+    <string name="Username">Username</string>
+    <string name="lbl_trip_bottom_toast_inside_zone">Reduce Speed</string>
+    <string name="lbl_trip_top_carcrash_tost_inside_zone">slow down, we don\'t wanna see you crash too!</string>
+    <string name="lbl_trip_bottom_carcrash_tost_inside_zone">Whoh! accident</string>
+    <string name="lbl_trip_top_constraction_tost_inside_zone">Construction Nearby</string>
+    <string name="lbl_trip_bottom_constraction_tost_inside_zone">Be Careful</string>
+    <string name="lbl_trip_top_police_tost_inside_zone">License &amp; Registration Please</string>
+    <string name="lbl_trip_bottom_police_tost_inside_zone">Police…</string>
+    <string name="lbl_reportViewDetail_title1">Approve Report</string>
+    <string name="lbl_thanks_for_feedback_message">By giving feedback you’re helping us improve the app.</string>
+    <string name="lbl_confirm_report_location">It is There</string>
+    <string name="lbl_disapprove_report_location">Not There</string>
+    <string name="lbl_about_cee">ls the user their current speed along with some other stats.</string>
+    <string name="lbl_privacy" translatable="false">
+        TERMS OF USE AND PRIVACY POLICY
+\n
+\n
+This application has been designed to provide radar warnings, real-time traffic alerts and relevant information for safer and more efficient driving.
+\n
+\n
+INTELLECTUAL PROPERTY \n
+The application and all its contents, including but not limited to texts, photographs, graphics, audio and video material, software, logos, titles, characters, names and icons are the property of Orbital point or, where appropriate, of its licensees. The total or partial copying and reproduction of the contents are strictly prohibited, as is the processing of inverse engineering using any of the contents used by the application.
+\n
+\n
+\n
+PRIVACY POLICY\n
+At Orbital point we care about your privacy. This privacy policy aims to help you to understand what information we gather, why we gather and how you can manage your information.
+\n
+\n
+\n
+In this Privacy Policy, the term “personal information” refers to the information you provide to us that personally identifies you, such as your name, device identifier, email address or your location.
+\n
+\n
+\n
+WHAT INFORMATION DO WE GATHER AND WHAT DO WE USE IT FOR?
+\n
+Information on the use of the Application
+\n
+\n
+\n
+When installing the application on your device, the application gathers ANONYMOUS information regarding its use and information of the device on which it is installed. For example, frequency of use of the application, usage time, type and model of the device, unique identifiers, language, version of the operating system, use of the battery and IP address. We also gather ANONYMOUS information regarding fault reports and performance.
+\n
+\n
+\n
+All the information gathered is used to maintain and improve the quality of the service provided. Thanks to this information, Orbital point can offer a customized service, make improvements to the application and resolve operating errors. We also use your information to communicate with you by sending messages containing information relating to updates, promotions or new related to the application.
+\n
+\n
+\n
+Under no circumstance will we sell the data gathered, neither will we share it with third parties, unless required by law.
+\n
+\n
+\n
+Orbital point uses the following third-party software for gathering usage information: Services provided by Google Inc.:
+\n
+\n
+\n
+Google Analytics for Firebase: We use Google Analytics to gather information on the use of the application. Google Analytics may share data with other tools provided by Firebase, such as Crash Reporting, Authentication, Remote Config or Cloud Messaging.
+\n
+Firebase Crash Reporting: We use Firebase Crash Reporting for reporting errors and information regarding the use of the application.
+\n
+Firebase Performance Monitoring: We use Firebase Performance Monitoring for measuring the performance of the application and to perform optimisations that improve the user experience.
+\n
+Firebase Remote Config: We use Firebase Remote Config for performing A/B tests and validating or purchasing the results relating to changes or improvements applied to different application user populations.
+\n
+Firebase Cloud Messaging: We use Firebase Cloud Messaging for sending messages and notifications to the users of the application. The messages may be sent to individual devices, groups of devices or specific segments. We can obtain statistics on how the users interact with our notifications (For example, the number of messages opened or conversion events associated to a particular message).
+\n
+For further information, please check the Google privacy policy: http://www.google.com/ policies/privacy
+\n
+Services provided by other companies:
+\n
+\n
+\n
+Facebook Analytics: We use Facebook Analytics for monitoring and analysing the marketing channels related to Facebook. This way, we can obtain better results when launching marketing campaigns aimed at obtaining new downloads
+\n
+of the application. This also helps us to understand how the users use the application. For further information, please check the Facebook privacy policy: https://www.facebook.com/about/privacy
+\n
+Information you share with us
+\n
+\n
+\n
+Information that you voluntarily share with us, such as your email address, age, gender, user name or any information about your profile that we can use to offer you a more personalized experience. We use your data to send you news, statistics and additional information related to our services.
+\n
+\n
+\n
+We may also use the email address you have given us (subject to the provisions of current law) to send you promotions and marketing campaigns. If you do not wish to receive any more notifications, please click on the corresponding link in the email messages or write to us at support@Orbital point-mobile.com. We will not share your contact information with any third parties.
+\n
+\n
+\n
+Location information
+\n
+\n
+\n
+To the extent in which Orbital point offers services that record their location and you use these services, Orbital point may gather and process your location data to provide services based on said location. Your GPS location shall not be accessed without your consent.
+\n
+\n
+\n
+Orbital point may use ANONYMIZING location information (information that cannot be matched to users) and make it available to its partners or any other third party. For example, it may provide the GPS information (location, speed, GPS signal precision, address, date and time) sent to your mobile device to navigation companies, telephone operators, traffic companies and map editors in an aggregate or anonymized format to help them improve their services and resolve any doubts that may arise. Insofar as Orbital point makes the location available to third parties in accordance with this privacy policy, it will always be provided in an ANONYMIZED manner.
+\n
+\n
+\n
+By default, the majority of browsers and devices provide means for deactivating GPS tracking. If the user has granted his/her express consent to such possibility, the application may receive information related to their actual geographic location.
+\n
+\n
+\n
+In particular, the application uses your GPS location for:
+\n
+\n
+\n
+Alerting USERS, based on their location, of possible traffic alerts such as: radar cameras, user alerts, dangerous traffic areas, controlled traffic lights and/or any traffic incident that may be useful for the user of the application.
+\n
+Notifying new traffic alerts. Our servers receive the type of alert, the location, date/time and the device identifier. This information is temporarily stored on our servers until the alert is no longer active. Your alert will be shown to other users in a completely ANONYMOUS manner.
+\n
+ADVERTS
+The application may use publicity to provide the service free of charge. When using the application, your device automatically sends certain information to our advertising partners. This information includes, for example, the name of the application, the type of device and the advertising ID.
+\n
+\n
+\n
+The application and our associates may compile and process personal data such as the identifier of your device, location data and other demographic or relevant information in order to offer you customized adverts. If you are a user located within the European Union, you may chose between using the application with customized adverts or non-customized adverts by accessing the “Privacy” option in the application setting.
+\n
+\n
+\n
+We may also receive information in an ANONYMOUS manner regarding how our users interact with our adverts.
+\n
+\n
+\n
+Below is the list of advertising partners with which we work for showing adverts:
+\n
+\n
+\n
+Google Admob: Privacy policy
+\n
+Mopub: Privacy policy
+\n
+\n
+\n
+The application may incorporate integrated purchases for removing adverts.
+\n
+\n
+\n
+COOKIES AND SIMILAR TECHONOLOGIES
+\n
+\n
+The application may use cookies and similar technologies. Cookies a small text files that are stored on your device. The application may use cookies for a range of different purposes such as to avoid the need to insert access information or gather statistical information. The user may choose to configure his/her web browser to reject cookies or to warn the user when cookies are sent.
+\n
+\n
+\n
+COMPLIANCE WITH REGULATORS
+GDPR European Union Requirements
+\n
+\n
+We regularly review our privacy policy and we ensure that the processing of your information meets said policy. The GDPR is the new EU regulation for protecting the privacy of its citizens. As a user of the application, you hav certain rights regarding how “personal information” is processed. These rights are described below:
+\n
+\n
+\n
+Right to be informed: You have the right to know how your data are processed.
+\n
+Right to access: You have the right to access and a request a copy of your data which have been gathered.
+\n
+Right to rectification: You have the right to modify and update your personal data when incorrect data are being used.
+\n
+Right to removal: You have the right to delete all personal data that have been gathered.
+\n
+Right to restriction: Your have the right to prevent a company from processing certain types of personal data.
+\n
+Right to portability of the data: You have the right access your personal data and transfer them to other data controllers.
+\n
+Right to oppose: You have the right to withdraw your consent to the processing of your data for public interest, marketing or research.
+\n
+Right to reject automatic decisions: You have the right to oppose your data from being processed by automatic systems.
+\n
+You may submit any of the requests described above by contacting us: support@Orbital-point.com
+\n
+\n
+\n
+CHANGES TO THIS PRIVACY POLICY
+\n
+\n
+We may change this privacy policy from time to time by publishing the most recent privacy policy and its duration date on our website. In the event of substantially modifying this privacy policy, we may inform of said changes by means of a specific warning in our applications, on our websites, by email or by means of a notification.
+\n
+\n
+\n
+LIABILITY EXEMPTION
+Without prejudice of the legal obligations arising from the application of the Spanish and European regulations, this application is provided without any kind of express or implicit guarantee regarding its quality, reliabilty, compatibility, security, performance, purpose, precision or accurateness and non-breach of the rights or legal compliances that may arise for its use regardless of the reason causing the same.
+\n
+\n
+\n
+Use of this application implies that:
+\n
+\n
+\n
+You accept the risks that may arise as a result of using this application.
+\n
+You accept the consequences that may arise from the use of any of the services that this application may provide irrespective of the functionality and purpose of its use.
+\n
+You accept the responsibility for any event that may arise which entails damage to the user or a third-party.
+\n
+You release Orbital point from all liability regarding the negative results or undesired consequences involved in a breach or crime of any nature.
+\n
+You are responsible for any illegal use that may be made using the application which involves any regulatory or legal non-compliance.
+\n
+CANCELLATION OF THE SERVICES
+You may cancel the services of this application at any time by uninstalling the application from your device.
+\n
+CONTACT
+If you have any question regarding the terms of use or the privacy policy, you may contact us by: support@Orbital-point.com
+\n
+Latest update: 1 apr 2023
+        \n
+        \n
+        \n
+    </string>
+    <string name="lbl_delete_account">Delete account</string>
+    <string name="lbl_report_alert_notification_title">Slow down!</string>
+    <string name="lbl_report_alert_notification_subtitle">We have detected a nearby road hazard proceed with caution</string>
+    <string name="btn_dismiss_location_error_alert">Dismiss</string>
+    <string name="lbl_location_error_alert">Cee require your location so it can notify you of reports</string>
+    <string name="lbl_notification_in_reportZone_title">Slow Down, Road Hazard Nearby!</string>
+    <string name="lbl_notification_in_reportZone_description">Cee detected a road hazard near you slow down to stay safe</string>
+    <string name="lbl_appMenu_alertmeFrom">Alert Me From</string>
+    <string name="lbl_appMenu_editProfile">Edit profile</string>
+    <string name="lbl_auth_alert_errorOTP">Error Sending OTP</string>
+    <string name="lbl_home_report_feedback_sheet_report_type_redlight">Redlight</string>
+    <string name="btn_home_report_action_sheet_staticCam_not_active">Disabled Camera</string>
+    <string name="lbl_speedlimit_sheet_title">To add a Camera choose the speed limit first</string>
+    <string name="lbl_speedlimit_sheet_card_title">Speed limit</string>
+    <string name="btn_speedlimit_sheet_add_button">Add</string>
+    <string name="btn_speedlimit_sheet_dismiss_button">Dismiss</string>
+    <string name="lbl_road_camera_title">Reduce Speed</string>
+    <string name="lbl_road_camera_description">Slow down, you can\'t afford another ticket</string>
+    <string name="lbl_redlight_camera_title">Redlight Camera</string>
+    <string name="lbl_redlight_camera_description">Slow down, or you will hit something</string>
+    <string name="lbl_construction_title">Be Careful</string>
+    <string name="lbl_construction_description">Construction Nearby</string>
+    <string name="lbl_police_title">Police…</string>
+    <string name="lbl_police_description">License &amp; Registration Please</string>
+    <string name="lbl_accident_title">Whoh! accident</string>
+    <string name="lbl_accident_description">Slow down, we don\'t wanna see you crash too!</string>
+    <string name="lbl_setting_other_setting">Other Settings</string>
+    <string name="lbl_appMenu_hi">"Hi! "</string>
+    <string name="btn_home_alert_save">Save</string>
+    <string name="lbl_auth_login">Login</string>
+    <string name="lbl_auth_selectCountry">Select Country</string>
+    <string name="lbl_auth_invalidPhoneNumber">"Phone number Invalid. "</string>
+    <string name="lbl_verifyOtp_anError">There is an error</string>
+    <string name="lbl_verifyOtp_codeIsSix">Please code is six</string>
+    <string name="lbl_verifyOtp_currentUserBanned">Current User Banned!</string>
+    <string name="lbl_searchViewCountryPicker_searchCountry">Search for country</string>
+    <string name="lbl_feedback_feedbackToast">You’ve passed by a camera! Your feedback will help us improve.</string>
+    <string name="lbl_nearestIncedents_dayAgo">day ago</string>
+    <string name="lbl_nearestIncedednts_hourAgo">hour ago</string>
+    <string name="lbl_nearestIncedednts_minuteAgo">minute ago</string>
+    <string name="lbl_nearestIncedednts_aMomentAgo">a moment ago</string>
+    <string name="lbl_nearestIncedednts_monthAgo">month ago</string>
+    <string name="lbl_error_report_place_dialog_title">You Can\'t Report yet!</string>
+    <string name="lbl_error_report_place_dialog_description">Drive while Cee is opened for 15km to unlock the ability to add report</string>
+    <string name="inside_geofence_notification_title">Slow down!</string>
+    <string name="inside_geofence_notification_description">we have detected a nearby road hazard, proceed with caution!</string>
+
+
+</resources>

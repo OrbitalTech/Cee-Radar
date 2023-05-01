@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "663760174892",
+    "project_id": "cee-platform-87d21",
+    "storage_bucket": "cee-platform-87d21.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:663760174892:android:1044373dfd6ef488867689",
+        "android_client_info": {
+          "package_name": "com.orbital.cee"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "663760174892-er5j8bo3vt393im1ubbkb80ag26flqee.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.orbital.cee",
+            "certificate_hash": "67fc849ea0cd58f0347c3b448b236fc775054dbc"
+          }
+        },
+        {
+          "client_id": "663760174892-5efvv857phnq16jdd93meubdgnik7n7n.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsnobtXjJRtE3Y_M7F3KJ_Bbh5G0z8rOM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "663760174892-5efvv857phnq16jdd93meubdgnik7n7n.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "663760174892-hlfrmuqaeaimk5om5as4mgjuprmtbjof.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.orbital.cee"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
