@@ -82,4 +82,6 @@
     <string name="lbl_error_report_place_dialog_description">Rapor ekleme yeteneğinin kilidini açmak için Cee 15km açıkken sürün</string>
     <string name="inside_geofence_notification_title">Yavaşla!</string>
     <string name="inside_geofence_notification_description">Yakındaki yol tehlikesini belirledik, dikkatli ilerleyin!</string>
+    <string name="lbl_reach_permitted_quota_report_description">İzin verilen raporlama kotasına ulaştınız</string>
+    <string name="lbl_reach_permitted_quota_report_title">limit aşıldı</string>
 </resources>

@@ -1,18 +1,11 @@
 package com.orbital.cee.utils;
 
-import static android.content.Context.ACTIVITY_SERVICE;
-
-import android.annotation.TargetApi;
 import android.app.Activity;
-import android.app.ActivityManager;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.location.Location;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.CountDownTimer;
 import android.provider.Settings;
@@ -22,14 +15,13 @@ import android.util.Log;
 import android.view.Gravity;
 import android.widget.Toast;
 
+import androidx.lifecycle.ViewModel;
+
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.common.util.NumberUtils;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.List;
-import java.util.Locale;
+import java.util.UUID;
 
 public class Utils {
     public static int buildNumber(Context context){
@@ -111,7 +103,8 @@ public class Utils {
 
         return phrase.toString();
     }
-    public static String getDeviceUniqueID(Activity activity){
+    public static String getDeviceUniqueID(Context context){
+        Activity activity = (Activity) context;
         return Settings.Secure.getString(activity.getContentResolver(),
                 Settings.Secure.ANDROID_ID);
     }
@@ -184,6 +177,21 @@ public class Utils {
             return "uae";
         }
 
+    }
+
+    public static int getNavigatingBarHeight(Context context){
+        Resources resources = context.getResources();
+        int resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            return resources.getDimensionPixelSize(resourceId);
+        }
+        return 0;
+    }
+    public static int pxToDp(int px) {
+        return (int) (px / Resources.getSystem().getDisplayMetrics().density);
+    }
+    public static int dpToPx(int dp) {
+        return (int) (dp * Resources.getSystem().getDisplayMetrics().density);
     }
 
 

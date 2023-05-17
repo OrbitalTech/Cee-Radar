@@ -50,7 +50,6 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                     val triggeringGeofences = geofencingEvent.triggeringGeofences
                     if (triggeringGeofences != null) {
                         for (i in triggeringGeofences){
-
                             val aa = i.requestId.split(",").toTypedArray()
                             playAlertSound(true,context, bearing = aa[1].toInt())
                             Log.d("BERING_TEST","REPOID-"+aa[0])
@@ -133,7 +132,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             if (HomeActivity.Singlt.SoundSta.value == 1){
                 val audio : AudioManager =  context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
                 val stVolLev = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-                audio.setStreamVolume(AudioManager.STREAM_MUSIC,20,0)
+                audio.setStreamVolume(AudioManager.STREAM_MUSIC,15,0)
                 mMediaPlayerr.start()
                 handler.post(object : Runnable {
                     override fun run() {

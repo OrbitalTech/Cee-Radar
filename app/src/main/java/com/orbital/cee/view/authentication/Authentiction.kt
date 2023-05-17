@@ -142,7 +142,7 @@ fun Authentication(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.Top,
                     horizontalAlignment = Alignment.CenterHorizontally) {
-                    Spacer(modifier = Modifier.height(30.dp))
+                    Spacer(modifier = Modifier.height(60.dp))
                     Box(
                         modifier = Modifier
                             .background(color = Color.White),
@@ -165,10 +165,10 @@ fun Authentication(
                         Row(modifier = Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
                             OutlinedButton(
                                 modifier = Modifier
-                                    .weight(0.3f).height(50.dp),
+                                    .weight(0.3f).height(54.dp),
                                 colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
                                 shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(2.dp, color = Color(0xFFE4E4E4)),
+                                border = BorderStroke(1.dp, color = Color(0xFFE4E4E4)),
                                 onClick = { isShowCountryPicker = !isShowCountryPicker },
                             ) {
                                 Row(modifier = Modifier.fillMaxWidth(),
@@ -191,9 +191,9 @@ fun Authentication(
                                 modifier =
                                 Modifier
                                     .weight(weight = 0.7f, fill = true)
-                                    .height(50.dp)
+                                    .height(54.dp)
                                     .border(
-                                        BorderStroke(2.dp, Color(0xFFE4E4E4)),
+                                        BorderStroke(1.dp, Color(0xFFE4E4E4)),
                                         shape = RoundedCornerShape(10.dp)
                                     ),
                                 value = phoneNumber.value,
@@ -246,7 +246,7 @@ fun Authentication(
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(55.dp)
+                            .height(58.dp)
                             .padding(horizontal = 20.dp)
                     ) {
                         Text(text =if(isLogin) stringResource(id = R.string.lbl_auth_login) else stringResource(id = R.string.btn_auth_continue_with_phone), color = Color.White)
@@ -284,11 +284,11 @@ fun Authentication(
                             isLoading = true
                                   },
                         shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(2.dp, Color(0xFFE4E4E4)),
+                        border = BorderStroke(1.dp, Color(0xFFE4E4E4)),
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(65.dp)
+                            .height(68.dp)
                             .padding(vertical = 5.dp, horizontal = 20.dp)
                     ) {
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically){
@@ -296,7 +296,7 @@ fun Authentication(
                                 painterResource(id = R.drawable.ic_google_color),
                                 contentDescription = "google",
                                 tint = Color.Unspecified,
-                                modifier = Modifier.size(ButtonDefaults.IconSize)
+                                modifier = Modifier.size(25.dp)
                             )
                             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                 Text(stringResource(id = R.string.btn_auth_continue_with_google),color = Color.Black)
@@ -311,12 +311,12 @@ fun Authentication(
                         val navigate = Intent(context, FbAuthActivity::class.java)
                         context.startActivity(navigate)
                     },
-                    border = BorderStroke(2.dp, Color(0xFFE4E4E4)),
+                    border = BorderStroke(1.dp, Color(0xFFE4E4E4)),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(65.dp)
+                        .height(68.dp)
                         .padding(vertical = 5.dp, horizontal = 20.dp)
                 ) {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically){
@@ -324,7 +324,7 @@ fun Authentication(
                             painterResource(id = R.drawable.ic_facebook),
                             contentDescription = "facebook",
                             tint = Color(0xFF495CE8),
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(28.dp)
                         )
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Text(stringResource(id = R.string.btn_auth_continue_with_facebook), color = Color.Black)

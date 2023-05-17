@@ -201,9 +201,8 @@ fun VerifyOTP(
                                                         errorMessage = context.resources.getString(R.string.lbl_verifyOtp_currentUserBanned)
                                                         isLoading = false
                                                     }else{
-                                                        val navigate = Intent(context, HomeActivity::class.java).apply {
-                                                            putExtra("source","authentication")
-                                                        }
+                                                        viewModel.saveStatisticsFromFirestore()
+                                                        val navigate = Intent(context, HomeActivity::class.java)
                                                         context.startActivity(navigate)
                                                         isLoading = false
                                                     }

@@ -17,8 +17,10 @@ import com.google.firebase.auth.*
 import com.google.firebase.firestore.FirebaseFirestore
 import com.orbital.cee.core.Constants.DB_REF_USER
 import com.orbital.cee.data.Event
+import com.orbital.cee.data.repository.DSRepositoryImpl
 import com.orbital.cee.data.repository.DataStoreRepository
 import com.orbital.cee.data.repository.EligibilityUserException
+import com.orbital.cee.data.repository.UserStatistics
 import com.orbital.cee.model.Response
 import com.orbital.cee.model.Response.Success
 import com.orbital.cee.model.ResponseDto
@@ -39,7 +41,8 @@ import javax.inject.Inject
 class AuthenticationViewModel @Inject constructor(
     private val repo: AuthRepository,
     val oneTapClient: SignInClient,
-    private val dataStoreRepository: DataStoreRepository
+    private val dataStoreRepository: DataStoreRepository,
+    private val ds : DSRepositoryImpl
 ) : ViewModel() {
     val auth = FirebaseAuth.getInstance()
     val db = FirebaseFirestore.getInstance()
@@ -259,5 +262,37 @@ class AuthenticationViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             dataStoreRepository.saveCredential(otp = firstLaunch, phoneNumber = phone,cCode = cc)
         }
+
+    suspend fun saveStatisticsFromFirestore(){
+        viewModelScope.launch(Dispatchers.IO) {
+            getUserStatistics().collect{
+                Log.d("DEBUG_STATISTICS_VM",it.maxSpeed.toString())
+                ds.saveStatistics(uStatistics = it)
+            }
+        }
+    }
+    private suspend fun getUserStatistics(): Flow<UserStatistics> {
+        return callbackFlow {
+            try {
+                val userStatistics = db.collection(DB_REF_USER).document(auth.currentUser?.uid!!).collection("statistic")
+                    .document("GeneralStats").get().await()
+                val totalAlerted = (userStatistics.get("alertedTime") as? Long? ?: 0).toInt()
+                val totalDistance = (userStatistics.get("traveldDistance") as? Long? ?: 0).toFloat()
+                val maxSpeed = (userStatistics.get("maxSpeed") as? Long? ?: 0).toInt()
+                Log.d("DEBUG_STATISTICS_VM",maxSpeed.toString())
+                trySend(
+                    UserStatistics(
+                    alertedCount = totalAlerted,
+                    traveledDistance = totalDistance,
+                    maxSpeed = maxSpeed
+                )
+                )
+            }catch (e:Exception){
+                Log.d("HOME_VIEW_MODEL_001",e.message.toString())
+                throw e
+            }
+            awaitClose{close()}
+        }
+    }
 
 }

@@ -255,7 +255,7 @@ fun Speed(
                         },
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
                         modifier = Modifier
-                            .size(45.dp)
+                            .size(46.dp)
                             .advancedShadow(
                                 color = Color.Black,
                                 alpha = 0.03f,

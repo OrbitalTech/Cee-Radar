@@ -119,6 +119,18 @@ class MetricsUtils {
                 else -> {"N/A"}
             }
         }
+
+        fun getDeviceId(context: Context): String? {
+            val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+            var deviceId: String? = null
+
+            deviceId = if (telephonyManager.deviceId != null) {
+                telephonyManager.deviceId
+            } else {
+                android.provider.Settings.Secure.getString(context.contentResolver, android.provider.Settings.Secure.ANDROID_ID)
+            }
+            return deviceId
+        }
         fun reportTypeToReport(reportType:Int):ReportTheme{
 
             return ReportTheme(color1 = Color.White, color2 = Color.White, title = "", icon = 0)
@@ -131,6 +143,36 @@ class MetricsUtils {
             val date = Date(time)
             val format = SimpleDateFormat("yyyy.MM.dd HH:mm")
             return format.format(date)
+        }
+        fun calculatePointRemainToNextLevel(currentPoint:Int):Int{
+            return if (currentPoint >= 2800){
+                1000000 - currentPoint
+            }else if (currentPoint >= 1200){
+                2800 - currentPoint
+            }else if (currentPoint >= 600){
+                1200 - currentPoint
+            }else if ( currentPoint >= 200){
+                600 - currentPoint
+            }else if(currentPoint >= 100){
+                200 - currentPoint
+            }else{
+                100 - currentPoint
+            }
+        }
+        fun calculatePointRemainToNextLevelPersint(currentPoint:Int):Float{
+            return if (currentPoint >= 2800){
+                1f.minus((1000000f.minus(currentPoint.minus(2800f))).div(1000000f))
+            }else if (currentPoint >= 1200){
+                1f.minus((2800f.minus(currentPoint.minus(1200f))).div(2800f))
+            }else if (currentPoint >= 600){
+                1f.minus( (1200f.minus(currentPoint.minus(600f))).div(1200f))
+            }else if ( currentPoint >= 200){
+                1f.minus((600f.minus(currentPoint.minus(200f))).div(600f))
+            }else if(currentPoint >= 100){
+                1f.minus((200f.minus(currentPoint.minus(100f))).div(200f))
+            }else{
+                1f.minus((100f.minus(currentPoint)).div(200f))
+            }
         }
     }
 

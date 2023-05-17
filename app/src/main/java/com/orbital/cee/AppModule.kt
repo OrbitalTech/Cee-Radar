@@ -5,6 +5,7 @@ import androidx.annotation.RequiresApi
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.orbital.cee.data.repository.DSRepositoryImpl
 import com.orbital.cee.data.repository.DataStoreRepository
 import com.orbital.cee.view.home.HomeViewModel
 import org.koin.android.ext.koin.androidApplication
@@ -17,7 +18,9 @@ val appModule = module {
         auth = FirebaseAuth.getInstance(),
         db = FirebaseFirestore.getInstance(),
         storage = FirebaseStorage.getInstance(),
-        dataStoreRepository = DataStoreRepository(androidApplication()),application = androidApplication()
+        ds = DSRepositoryImpl(androidApplication()),
+        dataStoreRepository = DataStoreRepository(androidApplication()),
+        application = androidApplication()
         )}
     viewModel { ApplicationViewModel(androidApplication())}
 }

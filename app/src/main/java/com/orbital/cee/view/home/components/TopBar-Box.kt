@@ -1,10 +1,15 @@
 package com.orbital.cee.view.home.components
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
@@ -12,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -29,13 +35,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.airbnb.lottie.compose.LottieAnimation
 import com.orbital.cee.R
 import com.orbital.cee.view.trip.advancedShadow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun topBar(onClickMenu : () -> Unit, temp : Int?, onClickAds:()->Unit, isAdLoaded : Boolean, isWatchedRewardVideo:()->Boolean,timeRemain:MutableState<Float>,onlineUser:MutableState<Int>) {
-
+    val coroutineScope = rememberCoroutineScope()
+    val scale = remember { Animatable(1f) }
     val progressAnimationValue by animateFloatAsState(
         targetValue = timeRemain.value,
         animationSpec = tween(durationMillis = 1000, easing = LinearEasing)
@@ -74,29 +83,25 @@ fun topBar(onClickMenu : () -> Unit, temp : Int?, onClickAds:()->Unit, isAdLoade
             .padding(horizontal = 12.dp, vertical = 15.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Button(
-            onClick = onClickMenu,
-            contentPadding = PaddingValues(0.dp),
-            modifier = Modifier
-                .size(55.dp)
+        Box(modifier = Modifier
                 .advancedShadow(
-                    color = Color.Black,
+                    color = Color(0xFF495CE8),
                     alpha = 0.06f,
-                    cornersRadius = 21.dp,
+                    cornersRadius = 23.dp,
                     shadowBlurRadius = 8.dp,
                     offsetX = 0.dp,
                     offsetY = 5.dp
-                ),
-            elevation =  ButtonDefaults.elevation(
-                defaultElevation = 0.dp,
-                pressedElevation = 0.dp,
-                disabledElevation = 0.dp,
-                hoveredElevation = 15.dp,
-                focusedElevation = 10.dp
-            ),
-            shape = RoundedCornerShape(21.dp),
-            colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.background)
+                )
+            .clickable(onClick = {
+                coroutineScope.launch {
+                    scale.animateTo(0.8f, animationSpec = spring())
+                    scale.animateTo(1f, animationSpec = spring())
+                }
+                onClickMenu()
+            }, indication = null, interactionSource = remember { MutableInteractionSource() })
+                .scale(scale.value), contentAlignment = Alignment.Center
         ) {
+            Icon(painter = painterResource(id = R.drawable.bg_btn_fab_my_location), contentDescription = "", tint = Color.Unspecified)
             Icon(
                 painter = painterResource(id = R.drawable.ic_menu_drawer),
                 modifier = Modifier.size(28.dp),
@@ -141,6 +146,29 @@ fun topBar(onClickMenu : () -> Unit, temp : Int?, onClickAds:()->Unit, isAdLoade
             Spacer(modifier = Modifier.width(8.dp))
             if (isAdLoaded || isWatchedRewardVideo()){
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                    IconButton(onClick = {
+//                        coroutineScope.launch {
+//                            scale.animateTo(0.8f, animationSpec = spring())
+//                            scale.animateTo(1f, animationSpec = spring())
+//                        }
+//                        onClickAds()
+//                    },
+//                        modifier = Modifier
+//                            .advancedShadow(
+//                                color = Color(0xFF495CE8),
+//                                alpha = 0.06f,
+//                                cornersRadius = 23.dp,
+//                                shadowBlurRadius = 8.dp,
+//                                offsetX = 0.dp,
+//                                offsetY = 5.dp
+//                            )
+//                            .scale(scale.value)
+//                            .indication(indication = null,
+//                                interactionSource = remember { MutableInteractionSource() })
+//                    ) {
+//                        Icon(painter = painterResource(id = R.drawable.bg_btn_fab_my_location), contentDescription = "", tint = Color.Unspecified)
+//
+//                    }
                     Button(
                         onClick = onClickAds,
                         modifier = Modifier
@@ -248,8 +276,6 @@ fun topBar(onClickMenu : () -> Unit, temp : Int?, onClickAds:()->Unit, isAdLoade
             }
             Box(
                 modifier = Modifier
-                    .height(55.dp)
-                    .width(165.dp)
                     .advancedShadow(
                         color = Color.Black,
                         alpha = 0.06f,
@@ -258,34 +284,34 @@ fun topBar(onClickMenu : () -> Unit, temp : Int?, onClickAds:()->Unit, isAdLoade
                         offsetX = 0.dp,
                         offsetY = 5.dp
                     )
-                    .clip(shape = RoundedCornerShape(21.dp))
-                    .background(color = MaterialTheme.colors.background)
+//                    .clip(shape = RoundedCornerShape(21.dp))
+//                    .background(color = MaterialTheme.colors.background)
                     , contentAlignment = Alignment.Center
             ) {
+                Icon(painter = painterResource(id = R.drawable.bg_wether_view), contentDescription = "", tint = Color.Unspecified)
                 Row(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_online_user),
-                                modifier = Modifier.size(16.dp),
-                                contentDescription = "",
-                                tint = Color(0xFF57D654)
-                            )
-                            Text(modifier = Modifier.width(35.dp),text = "${onlineUser.value}", color = Color(0xFF57D654), fontSize = 12.sp, textAlign = TextAlign.Center)
-                        }
-
-                        Spacer(modifier = Modifier.width(1.5.dp))
-                        Text(text = "ONLINE USER", color = Color(0xFF848484), fontSize = 9.sp)
-                    }
-                    Divider(
-                        color = Color(0xFFE4E4E4),
-                        modifier = Modifier
-                            .fillMaxHeight(0.5f)
-                            .width(2.dp)
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    .padding(horizontal = 12.dp),verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+//                    Column(modifier = Modifier.fillMaxWidth(0.55f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+//                        Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+//                            Icon(
+//                                painter = painterResource(id = R.drawable.ic_online_user),
+//                                modifier = Modifier.size(16.dp),
+//                                contentDescription = "",
+//                                tint = Color(0xFF57D654)
+//                            )
+//                            Text(modifier = Modifier.width(35.dp),text = "${onlineUser.value}", color = Color(0xFF57D654), fontSize = 12.sp, textAlign = TextAlign.Center)
+//                        }
+//
+//                        Spacer(modifier = Modifier.width(1.5.dp))
+//                        Text(text = "ONLINE USER", color = Color(0xFF848484), fontSize = 9.sp)
+//                    }
+//                    Divider(
+//                        color = Color(0xFFE4E4E4),
+//                        modifier = Modifier
+//                            .fillMaxHeight(0.5f)
+//                            .width(2.dp)
+//                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_weather),
                             modifier = Modifier.size(23.dp),

@@ -1,32 +1,31 @@
 package com.orbital.cee.view.home.components
 
-import android.os.Build
-import androidx.annotation.RequiresApi
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
-import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.PaintingStyle.Companion.Stroke
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.*
-import com.orbital.cee.core.GeofenceBroadcastReceiver
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.orbital.cee.R
 import kotlinx.coroutines.delay
-import java.lang.Math.PI
-import java.time.LocalTime
-import kotlin.math.cos
-import kotlin.math.sin
+
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 
 //@RequiresApi(Build.VERSION_CODES.O)
 //@Composable
@@ -214,7 +213,7 @@ import kotlin.math.sin
 //    }
 //
 //}
-@Preview
+
 @Composable
 private fun BorderProgressBar() {
 
@@ -241,83 +240,180 @@ private fun BorderProgressBar() {
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(40.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxWidth()
+            .height(40.dp)
+            .padding( horizontal = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
     ) {
-        // This is the progress path which wis changed using path measure
-        val pathWithProgress by remember {
-            mutableStateOf(Path())
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawLine(
+                color = Color(0XFFECEEFD),
+                Offset(0.0f,-40.0f),
+                Offset(size.width,-40f),
+                strokeWidth = 75f,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = Color(0xFF3F51B5),
+                Offset(0.0f,-40.0f),
+                Offset(650.0f,-40f),
+                strokeWidth = 75f,
+                cap = StrokeCap.Round
+            )
         }
-
-        // using path
-        val pathMeasure by remember { mutableStateOf(PathMeasure()) }
-
-        val path = remember {
-            Path()
-        }
-
-        val progress by animateFloatAsState(
-            targetValue = targetValue,
-            animationSpec = tween(startDurationInSeconds * 1000, easing = LinearEasing)
-        )
-        Box(contentAlignment = Alignment.Center) {
-            Canvas(modifier = Modifier.size(55.dp, 55.dp)) {
-
-                if (path.isEmpty) {
-                    path.addRoundRect(
-                        RoundRect(
-                            Rect(offset = Offset.Zero, size),
-                            cornerRadius = CornerRadius(21.dp.toPx())
-                        )
-                    )
-                }
-                pathWithProgress.reset()
-
-                pathMeasure.setPath(path, forceClosed = false)
-                pathMeasure.getSegment(
-                    startDistance = 0f,
-                    stopDistance = pathMeasure.length * progress / 100f,
-                    pathWithProgress,
-                    startWithMoveTo = true
-                )
-
-
-                clipPath(path) {
-                    drawRect(Color.White)
-                }
-
-                drawPath(
-                    path = path,
-                    style = Stroke(
-                        2.dp.toPx()
-                    ),
-                    color = Color.White
-                )
-
-                drawPath(
-                    path = pathWithProgress,
-                    style = Stroke(
-                        2.dp.toPx()
-                    ),
-                    color = Color(0xFF495CE8)
-                )
-            }
-
-            Text(text = "$currentTime", fontSize = 20.sp, color = Color(0xFF495CE8))
-        }
-
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {
-                targetValue = 0f
-                timerStarted = true
-            }) {
-            Text(text = "Start Timer")
-        }
-
     }
 }
+
+@Preview
+@Composable
+fun HorizontalProgress(percent : Float = 0.6f){
+    Column(
+        modifier = Modifier.height(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+    ) {
+//        TripInfoContainer(cornerRadius = 8f, tabWidth =250f){
+//        }
+
+        Canvas(modifier = Modifier.fillMaxHeight().fillMaxWidth(0.6f)) {
+            drawLine(
+                color = Color(0XFFECEEFD),
+                Offset(0.0f,5.0f),
+                Offset(size.width,5f),
+                strokeWidth = 14.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = Color(0xFF3F51B5),
+                Offset(0.0f,5.0f),
+                Offset(size.width * percent,5f),
+                strokeWidth = 14.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+        }
+    }
+
+}
+
+
+class NavShape(
+    private val widthOffset: Dp,
+    private val scale: Float
+) : Shape {
+
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        return Outline.Rectangle(
+            Rect(
+                Offset.Zero,
+                Offset(
+                    size.width * scale + with(density) { widthOffset.toPx() },
+                    size.height
+                )
+            )
+        )
+    }
+}
+
+
+
+
+@Composable
+fun TripInfoContainer(
+    modifier: Modifier = Modifier,
+    cornerRadius: Float,
+    tabWidth: Float,
+    content: @Composable () -> Unit
+) {
+//    val path = rememberPath(cornerRadius, tabWidth)
+
+    Canvas(modifier = modifier) {
+        val path = Path()
+        val rect = Rect(Offset.Zero, size)
+
+        path.moveTo(cornerRadius, rect.height)
+        path.arcTo(
+            rect = Rect(
+                Offset(rect.width - cornerRadius, rect.height - cornerRadius),
+                Size(cornerRadius * 2, cornerRadius * 2)
+            ),
+            startAngleDegrees = 90f,
+            sweepAngleDegrees = 90f,
+            forceMoveTo = false
+        )
+        path.arcTo(
+            rect = Rect(Offset(rect.width - cornerRadius, 0f), Size(cornerRadius * 2, cornerRadius * 2)),
+            startAngleDegrees = 0f,
+            sweepAngleDegrees = 90f,
+            forceMoveTo = false
+        )
+        path.arcTo(
+            rect = Rect(
+                Offset(rect.width - tabWidth - cornerRadius, cornerRadius),
+                Size(cornerRadius * 2, cornerRadius * 2)
+            ),
+            startAngleDegrees = -90f,
+            sweepAngleDegrees = 90f,
+            forceMoveTo = false
+        )
+        path.arcTo(
+            rect = Rect(
+                Offset(rect.width - tabWidth - cornerRadius, cornerRadius * 3),
+                Size(cornerRadius * 2, cornerRadius * 2)
+            ),
+            startAngleDegrees = 180f,
+            sweepAngleDegrees = 90f,
+            forceMoveTo = false
+        )
+        path.arcTo(
+            rect = Rect(Offset(0f, rect.height - cornerRadius * 2), Size(cornerRadius * 2, cornerRadius * 2)),
+            startAngleDegrees = 90f,
+            sweepAngleDegrees = 90f,
+            forceMoveTo = false
+        )
+        path.arcTo(
+            rect = Rect(Offset(0f, rect.height - cornerRadius), Size(cornerRadius * 2, cornerRadius * 2)),
+            startAngleDegrees = 180f,
+            sweepAngleDegrees = -90f,
+            forceMoveTo = false
+        )
+        drawPath(path, color = Color.Red)
+    }
+
+    content()
+}
+
+//private fun rememberPath(cornerRadius: Float, tabWidth: Float): Path {
+//
+//
+//    return path
+//}
+
+@Composable
+fun Loading(size : Int){
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec
+            .RawRes(R.raw.lottie_three_dot_loading_gray)
+
+    )
+    val progress by animateLottieCompositionAsState(
+        composition,
+        iterations = LottieConstants.IterateForever,
+        isPlaying = true,
+        speed = 1f,
+        restartOnPlay = false
+    )
+    LottieAnimation(
+        composition,
+        progress,
+        modifier = Modifier.size(size.dp).background(color = Color(0xFF848484))
+    )
+
+}
+
+
 //@RequiresApi(Build.VERSION_CODES.O)
 //@Preview(showBackground = true)
 //@Composable

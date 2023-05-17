@@ -1,7 +1,9 @@
 package com.orbital.cee.view.home.components
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -16,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -31,13 +32,20 @@ import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.*
 import com.orbital.cee.R
 import com.orbital.cee.core.GeofenceBroadcastReceiver
+import com.orbital.cee.utils.Utils.pxToDp
 import com.orbital.cee.view.home.HomeViewModel
+import com.orbital.cee.view.trip.Speed
 import java.math.RoundingMode
 import java.text.DecimalFormat
 
+@OptIn(ExperimentalMaterialApi::class)
 @RequiresApi(Build.VERSION_CODES.S)
 @Composable
-fun bottomBar(model:HomeViewModel,onButtonClicked: (bId : Int) -> Unit,onClickSpeed: (o : Offset) -> Unit,speedLimit:Int) {
+fun bottomBar(model:HomeViewModel,
+              onButtonClicked: (bId : Int) -> Unit,
+              onClickSpeed: (o : Offset) -> Unit,
+              speedLimit:Int,bottomSheetState :BottomSheetState,
+              navigationBarHeight:Int = 0,startTrip:()->Unit,saveTrip:()->Unit,continueTrip:()->Unit,tripReset:()->Unit,pauseTrip:()->Unit,isPurchasedAdRemove:MutableState<Boolean>) {
     val conf = LocalConfiguration.current
     val df = DecimalFormat("#.###")
     df.roundingMode = RoundingMode.DOWN
@@ -46,6 +54,8 @@ fun bottomBar(model:HomeViewModel,onButtonClicked: (bId : Int) -> Unit,onClickSp
         targetValue = model.speedPercent.value,
         animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
     )
+
+//    Log.d("DEBUG_MODAL_BOTTOM_SHEET", "ScrHeight: ${conf.screenHeightDp}")
     val composition = when (model.speed.value) {
         in 0..29 -> { rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_speedface_0to30km)) }
         in 30..59 -> { rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_speedface_30to60km)) }
@@ -55,7 +65,6 @@ fun bottomBar(model:HomeViewModel,onButtonClicked: (bId : Int) -> Unit,onClickSp
         in 110..119 -> { rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_speedface_110to120km)) }
         else -> { rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_speedface_120todeadkm)) }
     }
-
     val progress by animateLottieCompositionAsState(
         composition.value,
         iterations = LottieConstants.IterateForever,
@@ -63,31 +72,87 @@ fun bottomBar(model:HomeViewModel,onButtonClicked: (bId : Int) -> Unit,onClickSp
         speed = 1f,
         restartOnPlay = false
     )
+
+    var isToExpand = false
+    var isToCollapse = false
+    var a = 0f
+
+
+//    if (bottomSheetState.progress < 1f){
+//        isToExpand = bottomSheetState.requireOffset() < 20f
+//        isToCollapse = bottomSheetState.requireOffset() > 1950f
+//        a = 1 - (pxToDp(bottomSheetState.requireOffset().toInt()).toFloat() / conf.screenHeightDp.toFloat())
+////        Log.d("DEBUG_MODAL_BOTTOM_SHEET", "isToEx: $isToExpand")
+//        Log.d("DEBUG_MODAL_BOTTOM_SHEET", "ScrHeightOF: ${pxToDp(bottomSheetState.requireOffset().toInt())}")
+//    }
+//
+//    if (isToExpand){
+//        a = 1f
+//    }
+//    if (isToCollapse){
+//        a = 0f
+//    }
+
+
+
+//    a = if(bottomSheetState.isCollapsed){
+//        if (bottomSheetState.progress == 1f){
+//            if (isToExpand){
+//                1f
+//            }else{
+//                0f
+//            }
+//        }else{
+//            Log.d("DEBUG_MODAL_BOTTOM_SHEET","Off: ${bottomSheetState.requireOffset()}")
+//            bottomSheetState.progress
+//        }
+//    }else{
+//        if(bottomSheetState.progress == 1f){
+//            1f
+//        }else{
+//            Log.d("DEBUG_MODAL_BOTTOM_SHEET","Off: ${bottomSheetState.requireOffset()}")
+//            1 - bottomSheetState.progress
+//
+//        }
+//
+//    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
+
             //.navigationBarsPadding()
             .height(
                 height = if (conf.screenWidthDp < 350) {
                     130.dp
                 } else {
-                    150.dp
+                    (90 + navigationBarHeight).dp
                 }
             )
-            .clip(
-                shape = RoundedCornerShape(
+            .background(
+                color = MaterialTheme.colors.background, shape = RoundedCornerShape(
                     topStart = 18.dp,
                     topEnd = 18.dp
                 )
-            )
-            .background(color = MaterialTheme.colors.background),
+            ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top
     ) {
         Column() {
-            Spacer(modifier = Modifier.height(25.dp))
+            Spacer(modifier = Modifier.height(13.dp))
             Row(Modifier
-                .fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,) {
+//                        .pointerInput(Unit){
+//                            detectDragGestures { change, dragAmount ->
+////                            change.consume()
+//                                val (x,y) = dragAmount
+//                                when {
+//                                    x > 0 ->{ }
+//                                    x < 0 -> {}
+//                                }
+//                                Log.d("PRINT_Y_BOTTOM_BAR",change.position.y.toString())
+//
+//                            }
+//                        }
+                .fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(modifier = Modifier
                     .pointerInput(Unit) {
                         detectTapGestures(
@@ -95,7 +160,7 @@ fun bottomBar(model:HomeViewModel,onButtonClicked: (bId : Int) -> Unit,onClickSp
                         )
                     }
                     .padding(start = 12.dp)
-                    //.clickable(onClick = onClickSpeed)
+//                    .clickable(onClick = onClickSpeed)
                     ,
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(
@@ -224,5 +289,45 @@ fun bottomBar(model:HomeViewModel,onButtonClicked: (bId : Int) -> Unit,onClickSp
         }
 
     }
+//    Box(Modifier.fillMaxSize(),contentAlignment = Alignment.TopCenter){
+//
+//        Surface(modifier = Modifier.fillMaxSize(), color = Color.Red.copy(alpha =a)) {
+//
+//            Speed(
+//                model = model,onClickStart = startTrip,onClickFinish = saveTrip,
+//                onClickContinue = continueTrip,onClickBack ={} ,
+//                onClickResetTrip = tripReset,onClickPause = pauseTrip,isPurchasedAdRemove = isPurchasedAdRemove
+//            )
+//        }
+//    }
+
+//    AnimatedContent(
+//        targetState = bottomSheetState.progress,
+//        modifier = Modifier.fillMaxSize(),
+//        transitionSpec = {
+//            fadeIn() + slideInVertically(animationSpec = tween(400),
+//                initialOffsetY = { fullHeight -> fullHeight }) with
+//                    fadeOut(animationSpec = tween(200))
+//        }
+//    ) { targetState ->
+//
+//
+//
+//
+////        if (targetState >= 0.9f){
+////
+////        }else{
+////            Speed(
+////                model = model,onClickStart = startTrip,onClickFinish = saveTrip,
+////                onClickContinue = continueTrip,onClickBack ={} ,
+////                onClickResetTrip = tripReset,onClickPause = pauseTrip,isPurchasedAdRemove = isPurchasedAdRemove
+////            )
+////        }
+//    }
+
+
+
+
+
 
 }

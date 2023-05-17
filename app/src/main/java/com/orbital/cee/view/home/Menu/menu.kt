@@ -18,6 +18,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -53,21 +54,22 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import coil.compose.SubcomposeAsyncImage
 import com.airbnb.lottie.compose.*
+import com.google.android.material.internal.ContextUtils.getActivity
 import com.google.android.play.core.review.ReviewManagerFactory
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.mapbox.geojson.Point
-import com.mapbox.maps.CameraOptions
-import com.mapbox.maps.MapView
-import com.mapbox.maps.extension.style.expressions.dsl.generated.interpolate
-import com.mapbox.maps.plugin.LocationPuck2D
-import com.mapbox.maps.plugin.attribution.attribution
-import com.mapbox.maps.plugin.compass.compass
-import com.mapbox.maps.plugin.gestures.gestures
-import com.mapbox.maps.plugin.locationcomponent.location
-import com.mapbox.maps.plugin.logo.logo
-import com.mapbox.maps.plugin.scalebar.scalebar
+//import com.mapbox.maps.CameraOptions
+//import com.mapbox.maps.MapView
+//import com.mapbox.maps.extension.style.expressions.dsl.generated.interpolate
+//import com.mapbox.maps.plugin.LocationPuck2D
+//import com.mapbox.maps.plugin.attribution.attribution
+//import com.mapbox.maps.plugin.compass.compass
+//import com.mapbox.maps.plugin.gestures.gestures
+//import com.mapbox.maps.plugin.locationcomponent.location
+//import com.mapbox.maps.plugin.logo.logo
+//import com.mapbox.maps.plugin.scalebar.scalebar
 import com.orbital.cee.R
 import com.orbital.cee.core.Constants.DB_REF_USER
 import com.orbital.cee.core.Constants.OFFSET_X
@@ -76,6 +78,8 @@ import com.orbital.cee.core.Permissions
 import com.orbital.cee.data.repository.DataStoreRepository.PreferenceKey.distance
 import com.orbital.cee.model.User
 import com.orbital.cee.model.UserNew
+import com.orbital.cee.utils.MetricsUtils.Companion.calculatePointRemainToNextLevel
+import com.orbital.cee.utils.MetricsUtils.Companion.calculatePointRemainToNextLevelPersint
 import com.orbital.cee.utils.Utils
 import com.orbital.cee.view.MainActivity
 import com.orbital.cee.view.home.HomeViewModel
@@ -96,10 +100,8 @@ import java.text.DecimalFormat
 
 @RequiresApi(Build.VERSION_CODES.S)
 @Composable
-fun menu(model : HomeViewModel = viewModel(), navController: NavController) {
-
+fun menu(model : HomeViewModel = viewModel(), onCloseDrawer:() -> Unit,navController: NavController) {
     val auth = FirebaseAuth.getInstance()
-    val db = FirebaseFirestore.getInstance()
     val openDialog = remember{mutableStateOf(false)}
     val isShowSetting = remember{mutableStateOf(false)}
     val isHelp = remember{mutableStateOf(false)}
@@ -111,35 +113,19 @@ fun menu(model : HomeViewModel = viewModel(), navController: NavController) {
     val context = LocalContext.current
     val conf = LocalConfiguration.current
     var reportCounts = remember{mutableStateOf(99)}
-
-//    val activity = context as Activity
     val coroutineScope = rememberCoroutineScope()
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     val bitmap = remember { mutableStateOf<Bitmap?>(null) }
-//    val manager = ReviewManagerFactory.create(context)
+
     val boxWH = (conf.screenWidthDp - 50)/2
     val rotate = if (LocalConfiguration.current.layoutDirection == LayoutDirection.Rtl.ordinal){180f}else{0f}
-//    val launcher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()){uri : Uri? ->
-//        imageUri = uri
-//    }
-//    var vlue by remember { mutableStateOf(200f) }
-//    model.geofenceRadius.observeAsState().value?.let {vlue = it.toFloat() }
     LaunchedEffect(Unit){
-//        if (model.userInfo.value == UserNew()){
-//            model.loadUserInfoFromFirebase().collect{
-//                if (it.isSuccess){
-//
-//                }else{
-//                    navController.popBackStack()
-//                    Toast.makeText(context,"unable",Toast.LENGTH_LONG).show()
-//                }
-//            }
-//        }
+        model.retrieveStatistics()
         reportCounts.value = model.getMyReportCount()
         model.loadUserInfoFromFirebase().collect{
             if (it.isSuccess){
             }else{
-                navController.popBackStack()
+                onCloseDrawer()
                 Toast.makeText(context,"unable",Toast.LENGTH_LONG).show()
             }
         }
@@ -171,9 +157,9 @@ fun menu(model : HomeViewModel = viewModel(), navController: NavController) {
         restartOnPlay = false
     )
 
-    val distance = model.readDistance.observeAsState()
-    val maxSpeed = model.readMaxSpeed.observeAsState()
-    val alertCount = model.readAlertsCount.observeAsState()
+//    val distance = model.readDistance.observeAsState()
+//    val maxSpeed = model.readMaxSpeed.observeAsState()
+//    val alertCount = model.readAlertsCount.observeAsState()
     var rad = model.geofenceRadius.observeAsState()
 
 
@@ -260,7 +246,8 @@ Box(
                     .padding(start = 20.dp, bottom = 8.dp)
                     .clickable(indication = null,
                         interactionSource = remember { MutableInteractionSource() }) {
-                        navController.popBackStack()
+                        onCloseDrawer()
+//                        navController.popBackStack()
                     }) {
                     Row(verticalAlignment = Alignment.CenterVertically){
                         Icon(modifier = Modifier
@@ -330,12 +317,13 @@ Box(
                     })
                 }
                 .fillMaxWidth()
-                .height(95.dp)
                 .padding(horizontal = 20.dp, vertical = 10.dp)
-                .background(color =if(model.isDarkMode.value) Color(0xFF2C2E35) else Color(0xFFF7F7F7), shape = RoundedCornerShape(10.dp)), verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier
-                    .size(75.dp), contentAlignment = Alignment.Center){
-                    Box(modifier = Modifier.size(70.dp),contentAlignment = Alignment.Center) {
+                .border(width = 1.dp, color = Color(0xFFE4e4e4), shape = RoundedCornerShape(18.dp))
+                .background(
+                    color = MaterialTheme.colors.background, shape = RoundedCornerShape(18.dp)
+                ), verticalAlignment = Alignment.Top) {
+                Box(modifier = Modifier.padding(top = 12.dp), contentAlignment = Alignment.TopCenter){
+                    Box(modifier = Modifier.size(70.dp),contentAlignment = Alignment.TopCenter) {
                         imageUri?.let {
                             coroutineScope.launch {
                                 model.uploadPhotos(it).collect{response ->
@@ -357,10 +345,10 @@ Box(
                         }
                         Card(
                             Modifier
-                                .size(55.dp)
+                                .size(65.dp)
                                 .padding(5.dp),
 
-                            shape = RoundedCornerShape(19.dp),
+                            shape = RoundedCornerShape(22.dp),
 
                             ){
                             SubcomposeAsyncImage(
@@ -407,13 +395,55 @@ Box(
                     }
                 }
                 Column() {
-                    Row(){
-                        Text(text = stringResource(id = R.string.lbl_appMenu_hi), color = Color.Black)
-                        Text(text = "${model.userInfo.value.username}", fontWeight = FontWeight.Bold, color = Color.Black)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row() {
+                        Text(
+                            text = stringResource(id = R.string.lbl_appMenu_hi),
+                            color = Color.Black
+                        )
+                        Text(
+                            text = "${model.userInfo.value.username}",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
                     }
-                    Text(text = stringResource(id = R.string.lbl_appMenu_editProfile),color = Color(0XFF848484), fontSize = 10.sp)
+                    Spacer(modifier = Modifier.height(15.dp))
+                    Text(
+                        text = "Trust Level: ${model.userInfo.value.userLevel ?: 0}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(modifier = Modifier.padding(end = 12.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .height(14.dp)
+                                .clip(CircleShape)
+                                .background(Color(0XFF495CE8).copy(alpha = 0.3f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(calculatePointRemainToNextLevelPersint(model.userInfo.value.userPoint ?: 0))
+                                    .height(14.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0XFF495CE8))
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "+${calculatePointRemainToNextLevel(model.userInfo.value.userPoint ?: 0)} Points to next level",
+                        fontSize = 14.sp,
+                        color = Color(0x4D000000)
+                    )
+                    Spacer(modifier = Modifier.height(13.dp))
 
+//                    Text(text = stringResource(id = R.string.lbl_appMenu_editProfile),color = Color(0XFF848484), fontSize = 10.sp)
                 }
+
             }
             Row(modifier = Modifier
                 .fillMaxWidth()
@@ -421,9 +451,9 @@ Box(
                 Box(modifier = Modifier
                     .size(boxWH.dp)
                     .border(
-                        width = 1.5.dp,
+                        width = 1.dp,
                         color = Color(0xFFE4E4E4),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(18.dp)
                     ), contentAlignment = Alignment.BottomStart){
                     Image(modifier = Modifier.fillMaxSize(),painter = painterResource(id = if(model.isDarkMode.value) R.drawable.map_dark else R.drawable.map_light ), contentDescription ="", contentScale = ContentScale.FillBounds )
 //                    AndroidView(modifier = Modifier
@@ -492,11 +522,11 @@ Box(
                         .width(70.dp)
                         .height(45.dp)
                         .padding(8.dp), contentAlignment = Alignment.Center){
-                        switchButton(model.isDarkMode, isUserAdmin = (model.userType.value
-                            ?: 0) > 0
-                        ){
-                            model.isDarkMode.value = !model.isDarkMode.value
-                        }
+                        switchButton(model.isDarkMode, isUserAdmin =(model.userType.value ==  2),onClick =  {
+                            if(model.userType.value ==  2){
+                                model.isDarkMode.value = !model.isDarkMode.value
+                            }
+                        })
                     }
 
                 }
@@ -505,13 +535,19 @@ Box(
                     .size(boxWH.dp)
                     .border(
                         width = 1.dp,
-                        color = if(model.isDarkMode.value) Color(0xFF2C2E35) else Color(0xFFECEEFD),
-                        shape = RoundedCornerShape(10.dp)
+                        color = Color(0xFFE4E4E4),
+                        shape = RoundedCornerShape(18.dp)
                     )
-                    .background(color = if(model.isDarkMode.value) Color(0xFF2C2E35) else Color(0xFFECEEFD), shape = RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center){
+                    .background(
+                        color = if (model.isDarkMode.value) Color(0xFF2C2E35) else Color(
+                            0xFFECEEFD
+                        ), shape = RoundedCornerShape(18.dp)
+                    ), contentAlignment = Alignment.Center){
                     Column( horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         Box(contentAlignment = Alignment.Center){
-                            Image(modifier = Modifier.rotate(-45f).size(40.dp),painter = painterResource(id = R.drawable.ic_light_cursor_t1), contentDescription ="" )
+                            Image(modifier = Modifier
+                                .rotate(-45f)
+                                .size(40.dp),painter = painterResource(id = R.drawable.ic_light_cursor_t1), contentDescription ="" )
 //                            Icon(painter = painterResource(id = R.drawable.user_puck_shadow_new), contentDescription ="" , tint = Color.Unspecified)
 //                            Icon(modifier = Modifier.rotate(-45f),painter = painterResource(id = R.drawable.ic_user_puck_new), contentDescription ="" , tint = Color.Unspecified)
                         }
@@ -548,7 +584,7 @@ Box(
                                     contentDescription = "", tint = Color.Red)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column() {
-                                    Text(text = "${alertCount.value}", fontSize = 12.sp, fontWeight = FontWeight.Bold,color=Color.Black, lineHeight = 0.2.sp)
+                                    Text(text = "${model.userStatistics.value?.alertedCount}", fontSize = 12.sp, fontWeight = FontWeight.Bold,color=Color.Black, lineHeight = 0.2.sp)
                                     Text(text = stringResource(R.string.lbl_appMenu_statistic_alert_count),fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold,lineHeight = 0.2.sp)
                                 }
                             }
@@ -606,7 +642,7 @@ Box(
                                     contentDescription = "", tint = Color(0XFF495CE8))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column() {
-                                    Text(text = "${maxSpeed.value}", fontSize = 12.sp, fontWeight = FontWeight.Bold,color=Color.Black)
+                                    Text(text = "${model.userStatistics.value?.maxSpeed}", fontSize = 12.sp, fontWeight = FontWeight.Bold,color=Color.Black)
                                     Text(text = stringResource(R.string.lbl_appMenu_statistic_max_speed),fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
                                 }
                             }
@@ -634,9 +670,7 @@ Box(
                                     contentDescription = "", tint = Color(0XFF57D654))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column() {
-                                    distance.value?.let {
-                                        Text(text = "${df.format(it) } ", fontSize = 12.sp, fontWeight = FontWeight.Bold,color=Color.Black, letterSpacing = 0.sp)
-                                    }
+                                    Text(text = "${df.format(model.userStatistics.value?.traveledDistance) } ", fontSize = 12.sp, fontWeight = FontWeight.Bold,color=Color.Black, letterSpacing = 0.sp)
                                     Text(text = stringResource(R.string.lbl_appMenu_statistic_distance),letterSpacing = 0.sp, color = Color.Gray, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
                             }
@@ -719,7 +753,7 @@ Box(
             Box(modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
-                .height(height = if(model.userType.value == 2) 155.dp else 103.dp)
+                .height(height = if (model.userType.value == 2) 155.dp else 103.dp)
                 .border(
                     border = BorderStroke(width = 1.dp, color = Color(0XFFE4E4E4)),
                     shape = RoundedCornerShape(10.dp)
@@ -939,40 +973,42 @@ Box(
 
         }
         if (openDialog.value){
-            showCustomDialog(
-                onNegativeClick = {
+            DynamicModal(
+                icon = R.drawable.ic_cee_two,
+                title = stringResource(R.string.lbl_appMenu_alert_title),
+                positiveButtonText = stringResource(R.string.btn_home_alert_reportConfirmation_no),
+                negativeButtonText = stringResource(R.string.btn_home_alert_reportConfirmation_yes),
+                positiveButtonAction = {
                     openDialog.value = false
                 },
-                onPositiveClick = {
-                    auth.currentUser?.let{
-                        val statistic : HashMap<String, Any> = HashMap<String, Any>()
-                        alertCount.value?.let {alert->
-                            statistic["alertedTime"] = alert
-                        }
-                        maxSpeed.value?.let { maxSpeed->
-                            statistic["maxSpeed"] = maxSpeed
-                        }
-                        distance.value?.let {distance->
-                            statistic["traveldDistance"] = distance
-                        }
-                        statistic["latestUpdate"] = FieldValue.serverTimestamp()
-                        db.collection(DB_REF_USER).document(it.uid).collection("statistic").document("GeneralStats").update(statistic)
-                        model.restStatistics()
-
-
-
-                    }
-
-                    auth.signOut().run {
-//                        model.restStatistics()
-                        val navigate = Intent(context, MainActivity::class.java)
-                        context.startActivity(navigate)
+                negativeButtonAction = {
+                    coroutineScope.launch {
+                        model.logout(context = context)
                     }
                 },
-                title =stringResource(R.string.lbl_appMenu_alert_title),
-                buttonPositiveText = stringResource(R.string.btn_home_alert_reportConfirmation_yes),
-                buttonNegativeText = stringResource(R.string.btn_home_alert_reportConfirmation_no)
+                positiveButtonModifier = Modifier
+                    .fillMaxWidth(0.49f),
+                negativeButtonModifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = Color.Black,
+                        shape = RoundedCornerShape(8.dp)
+                    ),
             )
+//            showCustomDialog(
+//                onNegativeClick = {
+//                    openDialog.value = false
+//                },
+//                onPositiveClick = {
+//                    coroutineScope.launch {
+//                        model.logout(context = context)
+//                    }
+//                },
+//                title =stringResource(R.string.lbl_appMenu_alert_title),
+//                buttonPositiveText = stringResource(R.string.btn_home_alert_reportConfirmation_yes),
+//                buttonNegativeText = stringResource(R.string.btn_home_alert_reportConfirmation_no)
+//            )
         }
     }
 
@@ -1000,7 +1036,7 @@ Box(
         enter = fadeIn(),
         exit = fadeOut()
     ) {
-        General(){
+        General(model = model){
 //            isGeneral.value = false
             navController.popBackStack()
         }

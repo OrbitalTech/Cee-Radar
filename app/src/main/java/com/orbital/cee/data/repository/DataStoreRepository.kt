@@ -19,6 +19,8 @@ import com.orbital.cee.core.Constants.PREFERENCE_NAME
 import com.orbital.cee.core.Constants.PREFERENCE_SOUND_STATE
 import com.orbital.cee.core.Constants.PREFERENCE_TRIP_HISTORY
 import com.orbital.cee.core.Constants.PREFERENCE_USER_TYPE
+import com.orbital.cee.core.Constants.REPORT_COUNTER_PER_ONE_HOUR
+import com.orbital.cee.core.Constants.SAVE_LAST_REPORT
 import com.orbital.cee.model.Trip
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ViewModelScoped
@@ -45,6 +47,8 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
         val lastAdsWatch = longPreferencesKey(PREFERENCE_ADS_WATCH_TIME)
         val languageCode = stringPreferencesKey(LANGUAGE_CODE)
         val geofenceRadius = intPreferencesKey(GEOFENCE_RADIUS_M)
+        val reportCounterPerOneHour = intPreferencesKey(REPORT_COUNTER_PER_ONE_HOUR)
+        val saveLastReport = longPreferencesKey(SAVE_LAST_REPORT)
         val phone = stringPreferencesKey("phoneNumber")
         val cCode = stringPreferencesKey("cCode")
     }
@@ -77,6 +81,16 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
     suspend fun saveUserType(saveUserType:Int ) {
         dataStore.edit { preference ->
             preference[PreferenceKey.saveUserType] = saveUserType
+        }
+    }
+    suspend fun saveTheTimeOfTheLastReport(time:Timestamp ) {
+        dataStore.edit { preference ->
+            preference[PreferenceKey.saveLastReport] = time.seconds
+        }
+    }
+    suspend fun incrementReportCountPerOneHour(count:Int ) {
+        dataStore.edit { preference ->
+            preference[PreferenceKey.reportCounterPerOneHour] = count
         }
     }
     suspend fun saveGeoFenceRadius(radius:Int ) {
@@ -146,6 +160,8 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
             val firstLaunch = preference[PreferenceKey.firstLaunch] ?: true
             firstLaunch
         }
+
+
     val readMaxSpeed: Flow<Int> = dataStore.data
         .catch { exception ->
             if (exception is IOException) {
@@ -168,6 +184,18 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
         }
         .map { preference ->
             val firstLaunch = preference[PreferenceKey.alertCount] ?: 0
+            firstLaunch
+        }
+    val reportCountPerOneHour: Flow<Int> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preference ->
+            val firstLaunch = preference[PreferenceKey.reportCounterPerOneHour] ?: 0
             firstLaunch
         }
     val readUserType: Flow<Int> = dataStore.data
@@ -240,6 +268,18 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
         }
         .map { preference ->
             val firstLaunch = preference[PreferenceKey.lastAdsWatch] ?: 0
+            firstLaunch
+        }
+    val loadTimeOfLastReport: Flow<Long> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preference ->
+            val firstLaunch = preference[PreferenceKey.saveLastReport] ?: 0L
             firstLaunch
         }
 

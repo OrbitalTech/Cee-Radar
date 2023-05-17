@@ -22,17 +22,17 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -40,7 +40,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.LayoutDirection
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -80,12 +80,16 @@ import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
 import com.google.gson.Gson
 import com.mapbox.geojson.*
+
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapInitOptions
 
 import com.mapbox.maps.MapView
 import com.mapbox.maps.dsl.cameraOptions
+import com.mapbox.maps.extension.style.expressions.dsl.generated.color
+import com.mapbox.maps.extension.style.expressions.dsl.generated.literal
 import com.mapbox.maps.extension.style.layers.addLayer
+import com.mapbox.maps.extension.style.layers.generated.SymbolLayer
 import com.mapbox.maps.extension.style.layers.generated.lineLayer
 import com.mapbox.maps.extension.style.layers.properties.generated.LineCap
 import com.mapbox.maps.extension.style.layers.properties.generated.LineJoin
@@ -104,6 +108,9 @@ import com.mapbox.maps.extension.style.sources.generated.GeoJsonSource
 import com.mapbox.maps.extension.style.sources.generated.geoJsonSource
 import com.mapbox.maps.plugin.animation.CameraAnimatorOptions.Companion.cameraAnimatorOptions
 import com.mapbox.maps.plugin.animation.camera
+import com.mapbox.maps.plugin.annotation.AnnotationSourceOptions
+import com.mapbox.maps.plugin.annotation.ClusterOptions
+import com.mapbox.maps.plugin.attribution.attribution
 import com.mapbox.maps.plugin.gestures.addOnMapLongClickListener
 import com.orbital.cee.core.*
 import com.orbital.cee.core.Constants.DB_REF_ALERTED
@@ -131,8 +138,11 @@ import com.orbital.cee.utils.Shortcuts
 import com.orbital.cee.utils.Utils
 import com.orbital.cee.utils.Utils.Toaster.fix
 import com.orbital.cee.utils.Utils.getDeviceName
+import com.orbital.cee.utils.Utils.getNavigatingBarHeight
+import com.orbital.cee.utils.Utils.pxToDp
 import com.orbital.cee.view.LocationNotAvailable.LocationNotAvailable
 import com.orbital.cee.view.MainActivity
+import com.orbital.cee.view.MainMapScreen
 import com.orbital.cee.view.home.HomeActivity.Singlt.setBer
 import com.orbital.cee.view.home.Menu.About
 import com.orbital.cee.view.home.Menu.General
@@ -147,8 +157,16 @@ import com.orbital.cee.view.trip.advancedShadow
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import kotlinx.coroutines.tasks.await
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import pub.devrel.easypermissions.EasyPermissions
+import java.io.IOException
 import java.math.RoundingMode
 import java.net.URL
 import java.text.DecimalFormat
@@ -172,13 +190,18 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
     private var reportId = ""
     private val df = DecimalFormat("#.##")
     private var showRegisterDialog = mutableStateOf(false)
+    private var isShowMenu = mutableStateOf(false)
     private var showEditReportDialog = mutableStateOf(false)
-    private var speedLimit :Int? = 0
-    private var reportIdEditing :String = ""
     private var showAddReportManuallyDialog = mutableStateOf(false)
     private var showTripDialog = mutableStateOf(false)
+
+    private var speedLimit :Int? = 0
+    private var reportIdEditing :String = ""
+
     private var reportType = mutableStateOf(1)
     private var alertCount = mutableStateOf(0)
+    private var reportCount = mutableStateOf(0)
+    private var timeLastReport = mutableStateOf(0L)
     private var distance = mutableStateOf(0f)
     private var maxSpeed = mutableStateOf(0)
     private var lLocation = Location("")
@@ -188,11 +211,14 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
     private var mInterstitialAd: InterstitialAd? = null
     var isPurchasedAdRemove = mutableStateOf(false)
     var isChangeDetected = mutableStateOf(false)
+    var deleteReportDialog = mutableStateOf(false)
     var count = mutableStateOf(0)
+    var navigationBarHeight = mutableStateOf(0)
     var stopCount = mutableStateOf(0)
     var isInAway = mutableStateOf(true)
     var isInsideP2PZone = mutableStateOf(false)
     var isInsideP2PRoad = mutableStateOf(false)
+    var isReachedQuotaDialog = mutableStateOf(false)
     var langCode = mutableStateOf("en")
     var username = mutableStateOf("")
     var userAvatar = mutableStateOf("")
@@ -204,15 +230,22 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
     var rad = 5
     private val tempReports1 = mutableListOf<NewReport>()
     private val tempGeofence1 = mutableListOf<Geofence>()
-
     private val tempReports2 = mutableListOf<NewReport>()
     private val tempGeofence2 = mutableListOf<Geofence>()
-
     private val tempReports3 = mutableListOf<NewReport>()
     private val tempGeofence3 = mutableListOf<Geofence>()
-
     private val tempReports4 = mutableListOf<NewReport>()
     private val tempGeofence4 = mutableListOf<Geofence>()
+
+    private var appUpdate : AppUpdateManager? = null
+    private val REQUEST_CODE = 100
+    private lateinit var handler: Handler
+    private var seconds = 0
+    private var pauseOffset: Int = 0
+
+    private var distanceLoc : Location? = null
+
+
     object Singlt {
         var SoundSta = mutableStateOf(1)
         var bearingLoc = mutableStateOf(1)
@@ -224,24 +257,12 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
             Log.d("BERING_TEST",value.toString())
         }
     }
-    private var appUpdate : AppUpdateManager? = null
-    private val REQUEST_CODE = 100
-
-
-
-    private lateinit var handler: Handler
-    private var seconds = 0 // initial time in seconds
-
-    private var pauseOffset: Int = 0
-
     var isDone : Boolean by Delegates.observable(false){
             _, _, newValue ->
         if (newValue){
             fusedLocationProviderClient.removeLocationUpdates(locationCallback)
         }
     }
-    private var distanceLoc : Location? = null
-
     fun calcDis(cloc: Location) {
         if (distanceLoc == null) {
             distanceLoc = cloc
@@ -298,6 +319,8 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
         model.timeRemain.value = seconds
     }
 
+
+
     @OptIn(ExperimentalAnimationApi::class)
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -314,7 +337,7 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
                         calcDis(it)
                         isLocationChanged(it)
                         setBer(it.bearing.toInt())
-                        if(model.isTimerRunning.value){
+                        if(model.isTripStarted.value){
                             lrouteCoordinates.add(Point.fromLngLat(it.longitude,it.latitude))
                         }
                         isChangeDetected.value = true
@@ -326,8 +349,9 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
             }
         }
 
+        Log.d("DEBUG_PADDING_In", pxToDp(getNavigatingBarHeight(this)).toString())
         isFirstLunch = true
-        Log.d("MAP_ANIMATION_DEBUG",resources.configuration.locales.get(0).language)
+
         handler = Handler()
         startTimer()
         geofencingClient = LocationServices.getGeofencingClient(this)
@@ -357,7 +381,6 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val isPlaceCamera = intent?.getIntExtra("action_type",0) == 1
-        isFromLogin = intent?.getStringExtra("source") == "authentication"
         if(mAuth.currentUser == null){
             val navigate = Intent(this, MainActivity::class.java)
             this.startActivity(navigate)
@@ -370,12 +393,6 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
             Shortcuts.setUp(applicationContext)
         }
         createLocationRequest()
-
-//        rad = when (model.userType.value) {
-//            2 -> {70}
-//            1 -> {25}
-//            else -> {remoteConfig!!.getLong("reportSightRadius").toInt()}
-//        }
 
         setContent {
             val adRequest = AdRequest.Builder().build()
@@ -421,92 +438,15 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
                             color = MaterialTheme.colors.background
                         ) {
                             BackHandler(true) {}
-                            MainMap(model = model,navController = navController,trips.value)
+                            MainMapScreen(model = model,trips.value)
                         }
-                    }
-                    composable("menu",
-                        enterTransition = { slideIntoContainer(AnimatedContentScope.SlideDirection.Right, animationSpec = tween(700))},
-                        exitTransition = { slideOutOfContainer(AnimatedContentScope.SlideDirection.Left, animationSpec = tween(700))}){
-                        menu(model = model,navController = navController)
-                    }
-                    composable("general",
-                        enterTransition = { slideIntoContainer(AnimatedContentScope.SlideDirection.Right, animationSpec = tween(700))},
-                        exitTransition = { slideOutOfContainer(AnimatedContentScope.SlideDirection.Left, animationSpec = tween(700))}) {
-                        General(){ navController.popBackStack() }
-                    }
-                    composable("setting",
-                        enterTransition = { slideIntoContainer(AnimatedContentScope.SlideDirection.Right, animationSpec = tween(700))},
-                        exitTransition = { slideOutOfContainer(AnimatedContentScope.SlideDirection.Left, animationSpec = tween(700))}){
-                        setting(model =model ) { navController.popBackStack()}
-                    }
-                    composable("help",
-                        enterTransition = { slideIntoContainer(AnimatedContentScope.SlideDirection.Right, animationSpec = tween(700))},
-                        exitTransition = { slideOutOfContainer(AnimatedContentScope.SlideDirection.Left, animationSpec = tween(700))}){
-                        help() { navController.popBackStack()}
-                    }
-                    composable("about",
-                        enterTransition = { slideIntoContainer(AnimatedContentScope.SlideDirection.Right, animationSpec = tween(700))},
-                        exitTransition = { slideOutOfContainer(AnimatedContentScope.SlideDirection.Left, animationSpec = tween(700))}){
-                        About() { navController.popBackStack()}
-                    }
-                    composable("language",
-                        enterTransition = { slideIntoContainer(AnimatedContentScope.SlideDirection.Right, animationSpec = tween(700))},
-                        exitTransition = { slideOutOfContainer(AnimatedContentScope.SlideDirection.Left, animationSpec = tween(700))}){
-                        language(model) { navController.popBackStack()}
-                    }
-                    composable("privacy",
-                        enterTransition = { slideIntoContainer(AnimatedContentScope.SlideDirection.Right, animationSpec = tween(700))},
-                        exitTransition = { slideOutOfContainer(AnimatedContentScope.SlideDirection.Left, animationSpec = tween(700))}){
-                        privacy() { navController.popBackStack()}
-                    }
-                    composable("sound",
-                        enterTransition = { slideIntoContainer(AnimatedContentScope.SlideDirection.Right, animationSpec = tween(700))},
-                        exitTransition = { slideOutOfContainer(AnimatedContentScope.SlideDirection.Left, animationSpec = tween(700))}){
-                        sound(model) { navController.popBackStack()}
-                    }
-                    composable("setting",
-                        enterTransition = { slideIntoContainer(AnimatedContentScope.SlideDirection.Right, animationSpec = tween(700))},
-                        exitTransition = { slideOutOfContainer(AnimatedContentScope.SlideDirection.Left, animationSpec = tween(700))}){
-                        setting(model) { navController.popBackStack()}
                     }
                     composable("trip",
                         enterTransition = { slideIntoContainer(AnimatedContentScope.SlideDirection.Up, animationSpec = tween(700))},
                         exitTransition = { slideOutOfContainer(AnimatedContentScope.SlideDirection.Down, animationSpec = tween(700))})
                     {
-//                        val dbHandler: DBHandler = DBHandler(LocalContext.current)
                         Speed(
-                            model = model,onClickStart = {
-                                if (!model.isTimerRunning.value){
-                                    startTimer()
-                                }else{
-                                    resetTimer()
-                                    startTimer()
-                                }
-                                model.isTripStarted.value = true
-                                resetTrip()
-                                lrouteCoordinates.clear()
-                                showTripDialog.value = false
-                            },onClickFinish = {
-                                model.isTripStarted.value = false
-                                model.trip.value.endTime = Date()
-                                model.trip.value.distance = TripDistance.value
-                                model.trip.value.maxSpeed =TripMaxSpeed.value
-                                model.trip.value.startTime = TripStartTime
-                                model.trip.value.speedAverage = TripAverageSpeed.value
-                                model.trip.value.listOfLatLon.addAll(lrouteCoordinates).let { ite ->
-                                    if (ite){
-                                        trips.value?.add(model.trip.value)?.let {itt->
-                                            if (itt){
-
-                                                model.saveTrip(trips.value!!)
-                                                lrouteCoordinates.clear()
-                                                resetTrip()
-                                            }
-                                        }
-                                    }
-                                }
-                                resetTimer()
-                            },onClickContinue = {
+                            model = model,onClickStart = {startTrip() },onClickFinish = {saveTrip()},onClickContinue = {
                                 model.isTripStarted.value = true
                                 showTripDialog.value = false
 //                                if (!model.isTimerRunning.value){
@@ -573,11 +513,11 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
     private fun isLocationChanged(location: Location?) {
         if (location != null){
             if (lLocation == Location("")){
-                getReportsAndAddGeofences()
+                model.getReportsAndAddGeofences()
                 lLocation = location
             }else{
                 if (location.distanceTo(lLocation) > (rad*1000)-500){
-                    getReportsAndAddGeofences()
+                    model.getReportsAndAddGeofences()
                     lLocation = location
                 }
             }
@@ -587,40 +527,42 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
     @RequiresApi(Build.VERSION_CODES.S)
     @OptIn(ExperimentalMaterialApi::class, ExperimentalPagerApi::class,)
     @Composable
-    fun MainMap(model : HomeViewModel, navController: NavController, trips :ArrayList<Trip?>?) {
-        val state = rememberScaffoldState()
+    fun MainMap(model : HomeViewModel, trips :ArrayList<Trip?>?) {
         val coroutineScope = rememberCoroutineScope()
         val context = LocalContext.current
         val conf = LocalConfiguration.current
-        val _skipHalfExpanded = remember { mutableStateOf(true) }
-        val modalBottomSheetState = rememberModalBottomSheetState(
-            initialValue =  ModalBottomSheetValue.Hidden,
-            skipHalfExpanded = _skipHalfExpanded.value)
+        var bottomSheetState = rememberBottomSheetState(initialValue =BottomSheetValue.Collapsed, confirmStateChange = {
+            Log.d("DEBUG_MODAL_BOTTOM_SHEET", "col: $it")
+            if(it == BottomSheetValue.Collapsed){
+                model.whichButtonClicked.value = 0
+            }
+            true
+        })
+        Log.d("DEBUG_MODAL_BOTTOM_SHEET","prog: "+bottomSheetState.progress)
 
+
+        val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
         val alarm = remember {mutableStateOf(false)}
         val infiniteTransition = rememberInfiniteTransition()
         val configuration = LocalConfiguration.current
         model.readAlertsCount.observeAsState().value?.let {alertCount.value = it }
+        model.loadTimeOfLastReport.observeAsState().value?.let {timeLastReport.value = it }
+        model.reportCountPerOneHour.observeAsState().value?.let {reportCount.value = it }
         model.readDistance.observeAsState().value?.let {distance.value = it }
         model.readMaxSpeed.observeAsState().value?.let {maxSpeed.value = it }
         val lastWatchedAd = model.lsatAdsWatched.observeAsState()
         val userT = model.userType.observeAsState()
         val singleReport = remember {mutableStateOf(SingleCustomReport(isSuccess = false))}
 
-//        val openDrawer: () -> Unit = { coroutineScope.launch { scaffoldState.drawerState.open() } }
-//        val closeDrawer: () -> Unit = { coroutineScope.launch { scaffoldState.drawerState.close() } }
-
-
         var mapView by remember { mutableStateOf<MapView?>(null) }
         mapView = MapView(context, MapInitOptions(context, antialiasingSampleCount = 4))
-
-        
         DisposableEffect(Unit) {
             val newMapView = MapView(context).apply {
                 model.mapView = this
 
-                getMapboxMap().loadStyleUri(styleUri = if(model.isDarkMode.value) "mapbox://styles/orbital-cee/clevkf2lm00l301msgt5l621u" else "mapbox://styles/orbital-cee/clewl1dau00m101msbjilvi3q") { sty ->
+                getMapboxMap().loadStyleUri(styleUri = if(model.isDarkMode.value) "mapbox://styles/orbital-cee/clevkf2lm00l301msgt5l621u" else "mapbox://styles/orbital-cee/clh35qsv500lp01qy0rq23sbt") { sty ->
                     //zoomCamera(model.lastLocation.value.longitude,model.lastLocation.value.latitude)
+
                     if (!Permissions.hasLocationPermission(this@HomeActivity)) {
                         model.isLocationNotAvailable.value = true
                         Permissions.requestsLocationPermission(this@HomeActivity)
@@ -645,16 +587,19 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
                                 layerId = layerIDD
                             )
                             model.annotationConfigg = AnnotationConfig(
+
                                 layerId = layerPinIDD
                             )
-                            model.pointAnnotationManager =
-                                model.annotationApi!!.createPointAnnotationManager(
-                                    model.annotationConfig
-                                )
                             model.pointAnnotationManagerr =
                                 model.annotationApii!!.createPointAnnotationManager(
                                     model.annotationConfigg
                                 )
+                            model.pointAnnotationManager =
+                                model.annotationApi!!.createPointAnnotationManager(
+                                    model.annotationConfig
+                                )
+
+
 //                          flyCamera(model.lastLocation.value.longitude,model.lastLocation.value.latitude)
                             model.initLocationComponent()
                             model.setupGesturesListener()
@@ -674,6 +619,7 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
                 }
                 scalebar.enabled = false
                 compass.enabled = false
+                attribution.enabled = false
             }
             mapView = newMapView
             onDispose {
@@ -727,26 +673,6 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
                 }
 
             }
-//            if (Permissions.hasLocationPermission(this@HomeActivity)){
-//                while (true){
-//                    if (ActivityCompat.checkSelfPermission(
-//                            this@HomeActivity,
-//                            Manifest.permission.ACCESS_FINE_LOCATION
-//                        ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-//                            this@HomeActivity,
-//                            Manifest.permission.ACCESS_COARSE_LOCATION
-//                        ) != PackageManager.PERMISSION_GRANTED
-//                    ) {
-//                        return@LaunchedEffect
-//                    }
-//                    fusedLocationProviderClient.lastLocation.addOnCompleteListener { task->
-//                        if (task.result != null){
-//                            getJsonAsync(task.result.latitude,task.result.longitude)
-//                        }
-//                    }
-//                    delay(300000)
-//                }
-//            }
         }
         LaunchedEffect(Unit){
             delay(5)
@@ -761,7 +687,9 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
             model.addAlertCount(alertCount.value)
             reportId = GeofenceBroadcastReceiver.GBRS.GeoId.value!!
             model.inSideReportToast.value = true
+//            model.slider.value = false
             model.inSideReport.value = true
+
             mAuth.currentUser?.let { it1 ->
                 val alert : HashMap<String, Any> = HashMap<String, Any>()
                 alert["lastSeen"] = FieldValue.serverTimestamp()
@@ -821,12 +749,35 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
             }
         }
         Box(modifier = Modifier.fillMaxSize()){
-
-            ModalBottomSheetLayout(
-                sheetState = modalBottomSheetState,
-                sheetBackgroundColor = Color.Transparent,
+            BottomSheetScaffold(
+                sheetPeekHeight = (90 + navigationBarHeight.value).dp,
+                sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
                 sheetContent = {
+
                     when (model.whichButtonClicked.value) {
+                        0->{
+                            bottomBar(
+                                model = model,
+                                onButtonClicked = {btnId ->
+                                    model.whichButtonClicked.value = btnId
+                                    coroutineScope.launch {
+                                        delay(5)
+                                        bottomSheetState.expand()
+                                    }
+                                },
+                                onClickSpeed = {
+                                    coroutineScope.launch {
+                                        model.whichButtonClicked.value = 7
+                                        delay(5)
+                                        scaffoldState.bottomSheetState.expand()
+                                    }
+                                },
+                                speedLimit = singleReport.value.reportSpeedLimit ?: 0,
+                                navigationBarHeight = navigationBarHeight.value,bottomSheetState = bottomSheetState,
+                                startTrip = {startTrip()}, saveTrip = {saveTrip()}, continueTrip = {continueTrip()},
+                                pauseTrip = {pauseTrip()}, tripReset = {tripReset()}, isPurchasedAdRemove = isPurchasedAdRemove
+                            )
+                        }
                         1 -> {
                             UpdateCeeMap(onButtonClicked = {RT->
                                 if(GeofenceBroadcastReceiver.GBRS.GeoId.value != null){
@@ -851,11 +802,11 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
                             },
                                 onCloseClick = {
                                     coroutineScope.launch {
-                                        modalBottomSheetState.hide()
+                                        bottomSheetState.collapse()
+//                                        modalBottomSheetState.hide()
                                     }
                                 }, userType = userT.value ?: 0
                             )
-//                            _skipHalfExpanded.value =  false
                         }
                         2 -> {
                             TabLayout(model.allReports.iterator()){
@@ -873,84 +824,95 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
                                     }
                                 )
                                 coroutineScope.launch {
-                                    modalBottomSheetState.hide()
+                                    bottomSheetState.collapse()
                                 }
                             }
-//                            _skipHalfExpanded.value =  false
                         }
                         3 -> {
                             SoundBottomModal(model){
                                 coroutineScope.launch {
-                                    modalBottomSheetState.hide()
+                                    bottomSheetState.collapse()
                                 }
                             }
-//                            _skipHalfExpanded.value =  false
                         }
                         4 -> {
-                            NewReportViewDetail(vModel = model,model.reportId, onCloseClick = {coroutineScope.launch {
-                                modalBottomSheetState.hide()
-                            }
-                                model.deleteReport(it)},onEditSpeedLimit={repo,slim->
-                                speedLimit = slim
-                                reportIdEditing = repo
-                                showEditReportDialog.value = true
-                            }, onClickVerifyUser = {uid->
-                                try{
+                            NewReportViewDetail(vModel = model,model.reportId,
+                                onCloseClick = {
                                     coroutineScope.launch {
-                                        model.verifyUserByUid(uid)
+                                        bottomSheetState.collapse()
                                     }
+                                }, onReportDelete = {
+                                    deleteReportDialog.value = true
 
-                                    Log.d("DEBUG_USER_ID",uid)
-                                }catch (e:Exception){
-                                    Log.d("DEBUG_USER_ID",e.message.toString())
-                                }
-
-
-                            })
-//                            _skipHalfExpanded.value =  false
+                                },onEditSpeedLimit={repo,slim->
+                                    speedLimit = slim
+                                    reportIdEditing = repo
+                                    showEditReportDialog.value = true
+                                },
+                                userId = mAuth.currentUser?.uid
+                            )
                         }
                         5 -> {
                             RemoveAds(isPurchasedAdRemove, onClickClose = {
                                 coroutineScope.launch {
-                                    modalBottomSheetState.hide()
+                                    bottomSheetState.collapse()
                                 }
                             }, onClickWatchVideo = {
                                 if(mRewardedAd != null){
                                     mRewardedAd?.show(this@HomeActivity) {
-
                                         Log.d("TAG_AD_DEB", "User earned the reward.${it.type} , ${it.amount}")
                                         coroutineScope.launch { isPurchasedAdRemove.value = true  }
-
                                         model.saveWatchAdTime(Timestamp.now())
-
                                     }
                                 }else{
                                     Toast.makeText(this@HomeActivity,"please wait.",Toast.LENGTH_LONG).show()
                                 }
                             })
-//                            _skipHalfExpanded.value =  true
                         }
                         6-> {
                             speedLimit(onSelectedSpeed={addReport(it)},onDismiss={
                                 coroutineScope.launch {
-                                    modalBottomSheetState.hide()
+                                    bottomSheetState.collapse()
                                 }
                             })
-//                            _skipHalfExpanded.value =  false
+                        }
+                        7-> {
+                            Speed(
+                                model = model,onClickStart = {startTrip()},
+                                onClickFinish = {saveTrip()},
+                                onClickContinue = {continueTrip()},
+                                onClickBack = {
+                                    coroutineScope.launch {
+                                        bottomSheetState.collapse()
+                                    }
+                                },onClickResetTrip = {tripReset()},onClickPause = {pauseTrip()},isPurchasedAdRemove = isPurchasedAdRemove
+                            )
+                        }
+                    }
+                },
+                scaffoldState = scaffoldState,
+                backgroundColor = MaterialTheme.colors.background,
+                sheetBackgroundColor = Color.Transparent
 
+
+            ) {pad->
+                Log.d("DEBUG_PADDING_In",pad.toString())
+                lastWatchedAd.value?.let{
+                    if(it > 0){
+                        LaunchedEffect(Unit){
+                            while (true){
+                                //timeRemain.value = getRemain(lastWatchedAd.value,Timestamp.now().seconds)
+                                timeRemainInt.value = getRemainInt(lastWatchedAd.value,Timestamp.now().seconds)
+                                isPurchasedAdRemove.value = (Timestamp.now().seconds - it) < 1800
+                                delay(1000)
+                            }
                         }
                     }
                 }
-            ){
-                Scaffold(
-                    scaffoldState = state,
-                    drawerBackgroundColor = Color.Gray,
-                    drawerGesturesEnabled = true,
-                    drawerContent = {
-                                    Text("holab ")
-                    },
-                    backgroundColor = Color.Transparent,
-                    floatingActionButton = { fab(model, onClickReport = {
+                Scaffold(floatingActionButton = {
+                    fab(model,
+                        navigationBarHeight = navigationBarHeight.value,
+                        onClickReport = {
                         if(GeofenceBroadcastReceiver.GBRS.GeoId.value != null){
                         }else{
                             if (isOnline(this@HomeActivity)){
@@ -962,7 +924,9 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
                                         if(model.userType.value == 2){
                                             model.whichButtonClicked.value =6
                                             coroutineScope.launch {
-                                                modalBottomSheetState.show()
+//                                                modalBottomSheetState.show()
+                                                delay(5)
+                                                bottomSheetState.expand()
                                             }
                                         }else{
                                             model.showCustomDialogWithResult.value = true
@@ -1013,569 +977,566 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
                             }
                         },
                         onClickReportAddManually = {
+//                            coroutineScope.launch {
+//                                model.whichButtonClicked.value = 3
+//                                delay(100)
+//                                bottomSheetState.expand()
+////                                modalBottomSheetState.show()
+//                            }
                             showAddReportManuallyDialog.value = true
                         }
-                    ) },
-                    bottomBar = {
-                        bottomBar(
-                            model = model,
-                            onButtonClicked = {
-                                coroutineScope.launch {
-                                    model.whichButtonClicked.value = it
-                                    modalBottomSheetState.show()
-                                }
-                            },
-                            onClickSpeed = {
-                           navController.navigate("trip"){
-                               launchSingleTop = true
-                               restoreState = true
-                           }
-                               // isShowTrip.value = true
-                            },
-                            speedLimit = singleReport.value.reportSpeedLimit ?: 0
-                        )
-                    },
-                    content = {pad->
-                        Log.d("PADDING",pad.toString())
-                        lastWatchedAd.value?.let{
-                            if(it > 0){
+                    )
+                }) {padd->
+                    Log.d("DEBUG_PADDING_In",padd.toString())
+                    Box(modifier = Modifier
+                        .fillMaxSize()
+//                        .padding(bottom = if((padd.calculateBottomPadding() - 15.dp) >= 0.dp){padd.calculateBottomPadding() - 15.dp} else{0.dp} )
+                        .background(color = MaterialTheme.colors.background)) {
+                        if(model.allReports.size != 0 && model.pointAnnotationManager?.annotations?.size != model.allReports.size){
+                            Log.d("TESTANOSREPOS", model.pointAnnotationManager?.annotations?.size.toString())
+                            Log.d("TESTANOSREPOS", model.allReports.size.toString())
+                            model.createMarkerOnMap(model.allReports)
+                        }else{
+                            if(model.allReports.size == 0 ){
                                 LaunchedEffect(Unit){
-                                    while (true){
-                                        //timeRemain.value = getRemain(lastWatchedAd.value,Timestamp.now().seconds)
-                                        timeRemainInt.value = getRemainInt(lastWatchedAd.value,Timestamp.now().seconds)
-                                        isPurchasedAdRemove.value = (Timestamp.now().seconds - it) < 1800
-                                        delay(1000)
-                                    }
+                                    model.getReportsAndAddGeofences()
                                 }
                             }
                         }
-//                        if (lastWatchedAd.value != null ){
-//
-//
-//                        }
-                        Surface(modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colors.background) {
-                            if(model.allReports.size != 0 && model.pointAnnotationManager?.annotations?.size != model.allReports.size){
-                                Log.d("TESTANOSREPOS", model.pointAnnotationManager?.annotations?.size.toString())
-                                Log.d("TESTANOSREPOS", model.allReports.size.toString())
+                        Log.d("TESTANOSREPOS", model.allReports.size.toString())
+                        Log.d("TESTANOSREPOS", "Ano: "+model.pointAnnotationManager?.annotations?.size.toString())
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AndroidView({ mapView!! })
+                            val lineString = LineString.fromLngLats(lrouteCoordinates)
+                            val feature = Feature.fromGeometry(lineString)
+
+                            if(model.isCameraZoomChanged.value != model.isShowDots.value){
+                                model.isCameraZoomChanged.value = model.isShowDots.value
+                                Log.d("DEBUG_CAMERA_ZOOM", "Run")
                                 model.createMarkerOnMap(model.allReports)
-                            }else{
-                                if(model.allReports.size == 0 ){
-                                    LaunchedEffect(Unit){
-                                        getReportsAndAddGeofences()
-                                    }
-                                }
                             }
 
-                            Log.d("TESTANOSREPOS", model.allReports.size.toString())
-                            Log.d("TESTANOSREPOS", "Ano: "+model.pointAnnotationManager?.annotations?.size.toString())
-                            Box(modifier = Modifier.fillMaxSize()) {
-//                                Map(35.5558,45.4351,14.5)
-
-                                AndroidView({mapView!!})
-//                                DisposableEffect(mapView){
-//                                    onDispose {
-//                                        mapView!!.onDestroy()
-//                                    }
-//
-//                                }
-                                val lineString = LineString.fromLngLats(lrouteCoordinates)
-                                val feature = Feature.fromGeometry(lineString)
-                                if(isChangeDetected.value){
-                                    model.mapView.getMapboxMap().getStyle {
-                                        it.getSourceAs<GeoJsonSource>("line")
-                                            ?.featureCollection(
-                                                FeatureCollection.fromFeature(feature)
-                                            )
-                                    }
-                                    isChangeDetected.value = false
-                                }
-                                if (GeofenceBroadcastReceiver.GBRS.GeoId.value != null){
-                                    val corR by infiniteTransition.animateFloat(
-                                        initialValue = 5.0F,
-                                        targetValue = 18.0F,
-                                        animationSpec = infiniteRepeatable(
-                                            animation = tween(
-                                                durationMillis = 1500,
-                                                delayMillis = 100,
-                                                easing = FastOutSlowInEasing
-                                            ),
-                                            repeatMode = RepeatMode.Reverse
+                            if(isChangeDetected.value){
+                                model.mapView.getMapboxMap().getStyle {
+                                    it.getSourceAs<GeoJsonSource>("line")
+                                        ?.featureCollection(
+                                            FeatureCollection.fromFeature(feature)
                                         )
-                                    )
-                                    Box(modifier = Modifier
-                                        .fillMaxSize()
-                                        .innerShadow(
-                                            blur = 40.dp,
-                                            color = when (singleReport.value.reportType) {
-                                                0 -> {
-                                                    Color(0xFFFFFFFF)
-                                                }
-
-                                                2 -> {
-                                                    Color(0XFFF27D28)
-                                                }
-
-                                                3 -> {
-                                                    Color(0XFF36B5FF)
-                                                }
-
-                                                4 -> {
-                                                    Color(0XFF1ED2AF)
-                                                }
-
-                                                else -> {
-                                                    Color(0xFF495CE8)
-                                                }
-                                            },
-                                            cornersRadius = 0.dp,
-                                            offsetX = corR.dp,
-                                            offsetY = corR.dp
-                                        )
-                                    )
                                 }
-                                if(model.isCameraMove.value && isInsideP2PRoad.value){
-                                    Button(
-                                        onClick ={},
-                                        contentPadding = PaddingValues(0.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            backgroundColor = if (isInsideP2PZone.value){
-                                                if(singleReport.value.reportSpeedLimit == null){
-                                                    Color(0xFFEA4E34)
-                                                }else{
-                                                    if(singleReport.value.reportSpeedLimit!! < MyLocationService.LSS.inP2PAverageSpeed.value){
-                                                        Color(0xFFEA4E34)
-                                                    } else{
-                                                        Color(0xFF57D654)
-                                                    }
-                                                }
-                                            }else{
-                                                Color(0xFFFF9800)
-                                            }
+                                isChangeDetected.value = false
+                            }
+                            if(isChangeDetected.value){
+                                model.mapView.getMapboxMap().getStyle {
+                                    it.getSourceAs<GeoJsonSource>("line")
+                                        ?.featureCollection(
+                                            FeatureCollection.fromFeature(feature)
+                                        )
+                                }
+                                isChangeDetected.value = false
+                            }
+                            if (GeofenceBroadcastReceiver.GBRS.GeoId.value != null){
+                                val corR by infiniteTransition.animateFloat(
+                                    initialValue = 5.0F,
+                                    targetValue = 18.0F,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(
+                                            durationMillis = 1500,
+                                            delayMillis = 100,
+                                            easing = FastOutSlowInEasing
                                         ),
-                                        border = BorderStroke(1.5.dp,Color.White),
-                                        modifier = Modifier
-                                            .width(40.dp)
-                                            .height(25.dp)
-                                            .offset(
-                                                (conf.screenWidthDp / 2).dp,
-                                                (conf.screenHeightDp / 2).dp
-                                            )
-                                        , shape = RoundedCornerShape(20.dp)
-                                    ){
-                                        Text(text = "${MyLocationService.LSS.inP2PAverageSpeed.value}", color = Color.White, fontSize = 10.sp)
-                                    }
-                                }
-                                if(model.reportClicked.value){
-                                    LaunchedEffect(Unit){
-                                        coroutineScope.launch {
-                                            modalBottomSheetState.show()
-                                        }
-                                    }
-                                    model.reportClicked.value = false
-                                }
+                                        repeatMode = RepeatMode.Reverse
+                                    )
+                                )
                                 Box(modifier = Modifier
-                                    .matchParentSize()
-                                    .padding(horizontal = 18.dp), contentAlignment = Alignment.BottomStart) {
-                                    AnimatedVisibility(
-                                        visible = true,
-                                        enter = slideInHorizontally(),
-                                        exit = slideOutHorizontally()
-                                    ) {
-                                        Box(modifier = Modifier
-                                            .wrapContentSize()
-                                            .background(color = Color.Transparent), contentAlignment = Alignment.Center) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Button(
-                                                    contentPadding = PaddingValues(0.dp),
-                                                    onClick = {
-                                                        model.vibrate(context = context)
-                                                        if(!model.isTripStarted.value){
-                                                            showTripDialog.value = true
-                                                        }else{
-                                                            model.isTripStarted.value = false
-                                                            model.trip.value.endTime = Date()
-                                                            model.trip.value.distance = TripDistance.value
-                                                            model.trip.value.startTime = TripStartTime
-                                                            model.trip.value.maxSpeed =TripMaxSpeed.value
-                                                            model.trip.value.speedAverage =TripAverageSpeed.value
-                                                            model.trip.value.listOfLatLon.addAll(lrouteCoordinates).let { ite ->
-                                                                if (ite){
-                                                                    trips?.add(model.trip.value)
-                                                                        ?.let { itt->
+                                    .fillMaxSize()
+                                    .innerShadow(
+                                        blur = 40.dp,
+                                        color = Color(0xFF495CE8),
+                                        cornersRadius = 0.dp,
+                                        offsetX = corR.dp,
+                                        offsetY = corR.dp
+                                    )
+                                )
+                            }
+                            if(model.isCameraMove.value && isInsideP2PRoad.value){
+                                Button(
+                                    onClick ={},
+                                    contentPadding = PaddingValues(0.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        backgroundColor = if (isInsideP2PZone.value){
+                                            if(singleReport.value.reportSpeedLimit == null){
+                                                Color(0xFFEA4E34)
+                                            }else{
+                                                if(singleReport.value.reportSpeedLimit!! < MyLocationService.LSS.inP2PAverageSpeed.value){
+                                                    Color(0xFFEA4E34)
+                                                } else{
+                                                    Color(0xFF57D654)
+                                                }
+                                            }
+                                        }else{
+                                            Color(0xFFFF9800)
+                                        }
+                                    ),
+                                    border = BorderStroke(1.5.dp,Color.White),
+                                    modifier = Modifier
+                                        .width(40.dp)
+                                        .height(25.dp)
+                                        .offset(
+                                            (conf.screenWidthDp / 2).dp,
+                                            (conf.screenHeightDp / 2).dp
+                                        )
+                                    , shape = RoundedCornerShape(20.dp)
+                                ){
+                                    Text(text = "${MyLocationService.LSS.inP2PAverageSpeed.value}", color = Color.White, fontSize = 10.sp)
+                                }
+                            }
+                            if(model.reportClicked.value){
+                                LaunchedEffect(Unit){
+
+                                    coroutineScope.launch {
+                                        bottomSheetState.expand()
+                                    }
+                                }
+                                model.reportClicked.value = false
+                            }
+                            Box(modifier = Modifier
+                                .matchParentSize()
+                                .padding(horizontal = 18.dp), contentAlignment = Alignment.BottomStart) {
+                                AnimatedVisibility(
+                                    visible = true,
+                                    enter = slideInHorizontally(),
+                                    exit = slideOutHorizontally()
+                                ) {
+                                    Box(modifier = Modifier
+                                        .wrapContentSize()
+                                        .background(color = Color.Transparent), contentAlignment = Alignment.Center) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Button(
+                                                contentPadding = PaddingValues(0.dp),
+                                                onClick = {
+                                                    model.vibrate(context = context)
+                                                    if(!model.isTripStarted.value){
+                                                        showTripDialog.value = true
+                                                    }else{
+                                                        model.isTripStarted.value = false
+                                                        model.trip.value.endTime = Date()
+                                                        model.trip.value.distance = TripDistance.value
+                                                        model.trip.value.startTime = TripStartTime
+                                                        model.trip.value.maxSpeed =TripMaxSpeed.value
+                                                        model.trip.value.speedAverage =TripAverageSpeed.value
+                                                        model.trip.value.listOfLatLon.addAll(lrouteCoordinates).let { ite ->
+                                                            if (ite){
+                                                                trips?.add(model.trip.value)
+                                                                    ?.let { itt->
                                                                         if (itt){
                                                                             model.saveTrip(trips)
                                                                             resetTrip()
                                                                             lrouteCoordinates.clear()
                                                                         }
                                                                     }
-                                                                }
                                                             }
                                                         }
-                                                    },
+                                                    }
+                                                },
 
-                                                    colors = ButtonDefaults.buttonColors(backgroundColor =  Color.White),
-                                                    modifier = Modifier
-                                                        .size(50.dp)
-                                                        .advancedShadow(
-                                                            color = Color.Black,
-                                                            alpha = 0.06f,
-                                                            cornersRadius = 18.dp,
-                                                            shadowBlurRadius = 8.dp,
-                                                            offsetX = 0.dp,
-                                                            offsetY = 5.dp
-                                                        ),
-                                                    elevation =  ButtonDefaults.elevation(
-                                                        defaultElevation = 0.dp,
-                                                        pressedElevation = 0.dp,
-                                                        disabledElevation = 0.dp,
-                                                        hoveredElevation = 0.dp,
-                                                        focusedElevation = 0.dp
+                                                colors = ButtonDefaults.buttonColors(backgroundColor =  Color.White),
+                                                modifier = Modifier
+                                                    .size(50.dp)
+                                                    .advancedShadow(
+                                                        color = Color.Black,
+                                                        alpha = 0.06f,
+                                                        cornersRadius = 18.dp,
+                                                        shadowBlurRadius = 8.dp,
+                                                        offsetX = 0.dp,
+                                                        offsetY = 5.dp
                                                     ),
-                                                    shape = RoundedCornerShape(20.dp)
-                                                ) {
-                                                    if(model.isTripStarted.value){
-                                                        Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                                                            Icon(
-                                                                painter = painterResource(id =R.drawable.ic_pause),
-                                                                modifier = Modifier.size(22.dp),
-                                                                tint = Color.Unspecified,
-                                                                contentDescription = ""
-                                                            )
-                                                        }
-                                                    }else{
-                                                        Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                                                            Icon(
-                                                                painter = painterResource(id =R.drawable.ic_play),
-                                                                modifier = Modifier.size(22.dp),
-                                                                tint = Color.Unspecified,
-                                                                contentDescription = ""
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                if(model.isTripStarted.value){
-                                                    Text(modifier = Modifier
-                                                        .width(50.dp)
-                                                        .advancedShadow(
-                                                            color = Color(0xFF495CE8),
-                                                            alpha = 0.06f,
-                                                            cornersRadius = 12.dp,
-                                                            shadowBlurRadius = 8.dp,
-                                                            offsetX = 0.dp,
-                                                            offsetY = 2.dp
-                                                        ),text = stringResource(id = R.string.lbl_home_end_trip), textAlign = TextAlign.Center , color = Color(0xFF171729), fontSize = 7.sp, letterSpacing = 0.sp, fontWeight = FontWeight.W600)
-                                                }else{
-                                                    Text(modifier = Modifier
-                                                        .width(50.dp)
-                                                        .advancedShadow(
-                                                            color = Color.Black,
-                                                            alpha = 0.06f,
-                                                            cornersRadius = 12.dp,
-                                                            shadowBlurRadius = 8.dp,
-                                                            offsetX = 0.dp,
-                                                            offsetY = 2.dp
-                                                        ),text =stringResource(id = R.string.lbl_home_start_trip),textAlign = TextAlign.Center, color = Color(0xFF171729), fontSize = 7.sp, letterSpacing = 0.sp, fontWeight = FontWeight.W600)
-                                                }
-                                                Spacer(modifier = Modifier.height(170.dp))
-                                            }
-                                        }
-
-                                    }
-                                }
-                                Box(modifier = Modifier
-                                    .matchParentSize()
-                                    .padding(horizontal = 15.dp, vertical = 10.dp), contentAlignment = Alignment.BottomStart) {
-                                    AnimatedVisibility(
-                                        visible = model.slider.value,
-                                        enter = slideInHorizontally(),
-                                        exit = slideOutHorizontally()
-                                    ) {
-                                        FeedbackToast(reportType = singleReport.value.reportType,
-                                            onLike = {
-                                                model.isLiked.value = true
-                                                model.addReportFeedback(reportId,true)
-                                                coroutineScope.launch {
-                                                    delay(2000)
-                                                    model.slider.value = false
-                                                }
-                                            },
-                                            onUnlike = { model.isLiked.value = false
-                                                model.addReportFeedback(reportId,false)
-                                                coroutineScope.launch {
-                                                    delay(2000)
-                                                    model.slider.value = false
-                                                }
-                                            },
-                                            onClose = {
-                                                model.slider.value = false
-                                            },
-                                            isLiked = model.isLiked,
-                                            onDrag = { _, offset ->
-                                                if (offset.x < -30) {
-                                                    model.inSideReportToast.value = false
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
-                                Box(modifier = Modifier
-                                    .matchParentSize()
-                                    .padding(horizontal = 15.dp, vertical = 10.dp), contentAlignment = Alignment.BottomStart) {
-                                    AnimatedVisibility(
-                                        visible = model.inSideReportToast.value,
-                                        enter = slideInHorizontally(),
-                                        exit = slideOutHorizontally()
-                                    ) {
-                                        InsideReportToast(singleReport.value.reportType,singleReport.value.reportSpeedLimit) {
-                                            model.inSideReportToast.value = false
-                                        }
-                                    }
-                                }
-                                Column() {
-                                    if(!isPurchasedAdRemove.value){
-                                        Box(modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(color = Color.Transparent), contentAlignment = Alignment.Center) {
-                                            Box(modifier = Modifier
-                                                .background(
-                                                    color = Color.Transparent,
-                                                    shape = RoundedCornerShape(
-                                                        bottomEnd = 18.dp,
-                                                        bottomStart = 18.dp
-                                                    )
-                                                )
-                                                .fillMaxWidth()
-                                                .padding(
-                                                    top = 22.dp,
-                                                    start = 8.dp,
-                                                    bottom = 5.dp,
-                                                    end = 8.dp
-                                                ), contentAlignment = Alignment.Center) {
-                                                AndroidView(factory ={
-                                                    AdView(it).apply {
-                                                        this.setAdSize(AdSize.BANNER)
-                                                        adUnitId = resources.getString(R.string.main_screen_ad_banner_id)
-                                                        loadAd(AdRequest.Builder().build())
-                                                    }
-                                                })
-                                            }
-
-                                        }
-                                    }
-                                    Box(modifier = Modifier.padding(top = if(isPurchasedAdRemove.value){25.dp}else{0.dp})) {
-                                        topBar(onClickMenu = {
-                                            coroutineScope.launch {
-                                                state.drawerState.open()
-                                            }
-
-//                                            navController.navigate("menu")
-
-//                                            Log.d("CurrentLocalDebug",resources.configuration.locales.get(0).language)
-//                                            cameraState = model.mapView.getMapboxMap().cameraState
-//                                            coroutineScope.launch {
-//                                                        model.loadUserInfoFromFirebase().collect{
-//                                                            if (it.isSuccess){
-//                                                                //navController.navigate("menu")
-////                                                        isShowMenu.value = true
-//                                                            }else{
-//                                                                mAuth.signOut()
-//                                                                Toast.makeText(context,"unable",Toast.LENGTH_LONG).show()
-//                                                            }
-//                                                        }
-//                                            }
-                                        },temp = model.temperature.value,onClickAds = {
-                                            coroutineScope.launch {
-                                                model.whichButtonClicked.value = 5
-                                                modalBottomSheetState.show()
-                                            }
-                                        }, isAdLoaded = mRewardedAd != null,isWatchedRewardVideo = {isPurchasedAdRemove.value},timeRemain = timeRemainInt,model.onlineUserCounter)
-                                    }
-                                }
-                                if (model.showCustomDialogWithResult.value) {
-                                    showConfirmationDialog(
-                                        onDismiss = { model.showCustomDialogWithResult.value = false },
-                                        onNegativeClick = { model.showCustomDialogWithResult.value = false },
-                                        onPositiveClick = {
-                                            addReport(0)
-                                            getReportsAndAddGeofences()
-                                            model.showCustomDialogWithResult.value = false
-                                        },
-                                        model
-                                    )
-                                }
-                                if (showErrorPlaceReport.value) {
-                                    showPlaceErrorDialog(
-                                        onDismiss = { showErrorPlaceReport.value = false },
-                                    )
-                                }
-                                if(showTripDialog.value){
-                                    startTripDialog(
-                                        onClickStart = {
-                                            model.isTripStarted.value = true
-                                            resetTrip()
-                                            lrouteCoordinates.clear()
-                                            showTripDialog.value = false
-                                        },
-                                        onClickContinue = {
-//                                            routeCoordinates.addAll(LocationService.LSS.TripRoutePoints)
-                                            model.isTripStarted.value = true
-                                            showTripDialog.value = false
-//                                            tempRouteCoordinates.clear()
-                                        }, onDismiss = {
-                                            showTripDialog.value = false
-                                        })
-                                }
-                                if (showRegisterDialog.value) {
-                                    showRegisterDialog(
-                                        onDismiss = { showRegisterDialog.value = true },
-                                        onPositiveClick = {
-                                            if (it.length >= 2){
-                                                db.collection(DB_REF_USER).document(mAuth.currentUser!!.uid).update("username",it).addOnSuccessListener {
-                                                    showRegisterDialog.value = false
-                                                }
-                                            }
-                                        },
-                                    )
-                                }
-                                if (showEditReportDialog.value) {
-                                    showEditReportDialog(
-                                        onDismiss = { showEditReportDialog.value = false },
-                                        speedLimit = speedLimit,
-                                        onPositiveClick = {
-                                            it?.let {updatedSpeedLimit ->
-                                                db.collection(DB_REF_REPORT).document(reportIdEditing).update("reportSpeedLimit",updatedSpeedLimit).addOnSuccessListener {
-                                                    showEditReportDialog.value = false
-                                                    Toast.makeText(context,"Speed limit updated successfully to $updatedSpeedLimit.",Toast.LENGTH_SHORT).show()
-                                                }
-                                            }
-
-                                        },
-                                    )
-                                }
-                                if (showAddReportManuallyDialog.value) {
-                                    showAddReportManuallyDialog(
-                                        onDismiss = { showAddReportManuallyDialog.value = false },
-                                        onPositiveClick = {point,type,time,limit ->
-                                            model.addReport(geoPoint = point, reportType = type, context = applicationContext,time = time,speedLimit = limit)
-                                            showAddReportManuallyDialog.value = false
-                                        }, clickedPoint = pointClickedOnMap.value
-                                    )
-                                }
-                                LaunchedEffect(Unit){
-                                    delay(7000)
-                                    model.createMarkerOnMap(model.allReports)
-                                }
-                                LaunchedEffect(Unit){
-                                    if(isFirstLunch){
-                                        Log.d("MAP_ANIMATION_DEBUG","Hi you")
-                                        model.mapView.camera.apply {
-                                            val zoom = createZoomAnimator(
-                                                cameraAnimatorOptions(14.5) {
-                                                    startValue(7.0)
-                                                }
+                                                elevation =  ButtonDefaults.elevation(
+                                                    defaultElevation = 0.dp,
+                                                    pressedElevation = 0.dp,
+                                                    disabledElevation = 0.dp,
+                                                    hoveredElevation = 0.dp,
+                                                    focusedElevation = 0.dp
+                                                ),
+                                                shape = RoundedCornerShape(20.dp)
                                             ) {
-                                                startDelay = 1500
-                                                duration = 2000
-                                                interpolator = AccelerateDecelerateInterpolator()
+                                                if(model.isTripStarted.value){
+                                                    Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                                                        Icon(
+                                                            painter = painterResource(id =R.drawable.ic_pause),
+                                                            modifier = Modifier.size(22.dp),
+                                                            tint = Color.Unspecified,
+                                                            contentDescription = ""
+                                                        )
+                                                    }
+                                                }else{
+                                                    Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                                                        Icon(
+                                                            painter = painterResource(id =R.drawable.ic_play),
+                                                            modifier = Modifier.size(22.dp),
+                                                            tint = Color.Unspecified,
+                                                            contentDescription = ""
+                                                        )
+                                                    }
+                                                }
                                             }
-                                            playAnimatorsSequentially(zoom)
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            if(model.isTripStarted.value){
+                                                Text(modifier = Modifier
+                                                    .width(50.dp)
+                                                    .advancedShadow(
+                                                        color = Color(0xFF495CE8),
+                                                        alpha = 0.06f,
+                                                        cornersRadius = 12.dp,
+                                                        shadowBlurRadius = 8.dp,
+                                                        offsetX = 0.dp,
+                                                        offsetY = 2.dp
+                                                    ),text = stringResource(id = R.string.lbl_home_end_trip), textAlign = TextAlign.Center , color = Color(0xFF171729), fontSize = 7.sp, letterSpacing = 0.sp, fontWeight = FontWeight.W600)
+                                            }else{
+                                                Text(modifier = Modifier
+                                                    .width(50.dp)
+                                                    .advancedShadow(
+                                                        color = Color.Black,
+                                                        alpha = 0.06f,
+                                                        cornersRadius = 12.dp,
+                                                        shadowBlurRadius = 8.dp,
+                                                        offsetX = 0.dp,
+                                                        offsetY = 2.dp
+                                                    ),text =stringResource(id = R.string.lbl_home_start_trip),textAlign = TextAlign.Center, color = Color(0xFF171729), fontSize = 7.sp, letterSpacing = 0.sp, fontWeight = FontWeight.W600)
+                                            }
+                                            Spacer(modifier = Modifier.height((navigationBarHeight.value + 105).dp))
                                         }
-                                        isFirstLunch = false
-                                    }else{
+                                    }
+
+                                }
+                            }
+                            Box(modifier = Modifier
+                                .matchParentSize()
+                                .padding(horizontal = 15.dp, vertical = 10.dp), contentAlignment = Alignment.BottomStart) {
+                                AnimatedVisibility(
+                                    visible = !model.inSideReportToast.value && model.slider.value,
+                                    enter = slideInHorizontally(),
+                                    exit = slideOutHorizontally()
+                                ) {
+                                    FeedbackToast(reportType = singleReport.value.reportType,
+                                        onLike = {
+                                            model.isLiked.value = true
+                                            model.addReportFeedback(reportId,true)
+                                            coroutineScope.launch {
+                                                delay(2000)
+                                                model.slider.value = false
+                                            }
+                                        },
+                                        onUnlike = { model.isLiked.value = false
+                                            model.addReportFeedback(reportId,false)
+                                            coroutineScope.launch {
+                                                delay(2000)
+                                                model.slider.value = false
+                                            }
+                                        },
+                                        onClose = {
+                                            model.slider.value = false
+                                        },
+                                        isLiked = model.isLiked,
+                                        onDrag = { _, offset ->
+                                            if (offset.x < -30) {
+                                                model.inSideReportToast.value = false
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                            Box(modifier = Modifier
+                                .matchParentSize()
+                                .padding(horizontal = 15.dp, vertical = 10.dp), contentAlignment = Alignment.BottomStart) {
+                                AnimatedVisibility(
+                                    visible = model.inSideReportToast.value && !model.slider.value,
+                                    enter = slideInHorizontally(),
+                                    exit = slideOutHorizontally()
+                                ) {
+                                    InsideReportToast(singleReport.value.reportType,singleReport.value.reportSpeedLimit) {
+                                        model.inSideReportToast.value = false
+                                    }
+                                }
+                            }
+                            Column() {
+                                if(!isPurchasedAdRemove.value){
+                                    Box(modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(color = Color.Transparent), contentAlignment = Alignment.Center) {
+                                        Box(modifier = Modifier
+                                            .background(
+                                                color = Color.Transparent,
+                                                shape = RoundedCornerShape(
+                                                    bottomEnd = 18.dp,
+                                                    bottomStart = 18.dp
+                                                )
+                                            )
+                                            .fillMaxWidth()
+                                            .padding(
+                                                top = 35.dp,
+                                                start = 8.dp,
+                                                bottom = 0.dp,
+                                                end = 8.dp
+                                            ), contentAlignment = Alignment.Center) {
+                                            AndroidView(factory ={
+                                                AdView(it).apply {
+                                                    this.setAdSize(AdSize.BANNER)
+                                                    adUnitId = resources.getString(R.string.main_screen_ad_banner_id)
+                                                    loadAd(AdRequest.Builder().build())
+                                                }
+                                            })
+                                        }
+
+                                    }
+                                }
+                                Box(modifier = Modifier.padding(top = if(isPurchasedAdRemove.value){25.dp}else{0.dp})) {
+                                    topBar(onClickMenu = {
+                                        isShowMenu.value = true
+                                    },temp = model.temperature.value,onClickAds = {
+                                        coroutineScope.launch {
+                                            model.whichButtonClicked.value = 5
+                                            delay(5)
+                                            bottomSheetState.expand()
+                                        }
+                                    }, isAdLoaded = mRewardedAd != null,isWatchedRewardVideo = {isPurchasedAdRemove.value},timeRemain = timeRemainInt,model.onlineUserCounter)
+                                }
+                            }
+                            if (model.showCustomDialogWithResult.value) {
+                                showConfirmationDialog(
+                                    onDismiss = { model.showCustomDialogWithResult.value = false },
+                                    onNegativeClick = { model.showCustomDialogWithResult.value = false },
+                                    onPositiveClick = {
+                                        addReport(0)
+                                        model.getReportsAndAddGeofences()
+                                        model.showCustomDialogWithResult.value = false
+                                    },
+                                    model
+                                )
+                            }
+                            if (showErrorPlaceReport.value) {
+                                DynamicModal(
+                                    title = stringResource(id =R.string.lbl_error_report_place_dialog_title),
+                                    description = stringResource(id =R.string.lbl_error_report_place_dialog_description),
+                                    icon = R.drawable.ic_cee_two,
+                                    positiveButtonAction = {
+                                        showErrorPlaceReport.value = false
+                                    },
+                                    negativeButtonAction = {},
+                                    positiveButtonText = stringResource(id =R.string.btn_home_alert_done),
+                                    positiveButtonModifier =Modifier.fillMaxWidth(0.49f) ,
+                                )
+                            }
+                            if (isReachedQuotaDialog.value) {
+                                DynamicModal(
+                                    title = stringResource(id =R.string.lbl_reach_permitted_quota_report_title),
+                                    description = stringResource(id =R.string.lbl_reach_permitted_quota_report_description),
+                                    icon = R.drawable.ic_cee_two,
+                                    positiveButtonAction = {
+                                        isReachedQuotaDialog.value = false
+                                    },
+                                    negativeButtonAction = {},
+                                    positiveButtonText = stringResource(id =R.string.btn_auth_alert_ok),
+                                    positiveButtonModifier =Modifier.fillMaxWidth(0.49f) ,
+                                )
+                            }
+                            if (deleteReportDialog.value) {
+                                DynamicModal(
+                                    title = "Delete report",
+                                    description = "Are you sure to delete this report",
+                                    icon = R.drawable.ic_cee_two,
+                                    positiveButtonAction = {
+                                        deleteReportDialog.value = false
+                                        if(model.userInfo.value.userType == 2){
+                                            model.isDeleteReportRequested.value = true
+                                            mAuth.currentUser?.uid.let {
+                                                val req = Request
+                                                    .Builder()
+                                                    .url("https://us-central1-cee-platform-87d21.cloudfunctions.net/onDeleteReportByAdmin?reportId=${model.reportId.value}&adminId=${it}")
+                                                    .post("{}".toRequestBody("application/json".toMediaType()))
+                                                    .build()
+
+                                                val client = OkHttpClient()
+                                                client
+                                                    .newCall(req)
+                                                    .enqueue(object : Callback {
+                                                        override fun onFailure(call: Call, e: IOException) {
+                                                            model.isDeleteReportRequested.value = false
+                                                            Toast.makeText(this@HomeActivity,e.message.toString(),Toast.LENGTH_LONG).show()
+                                                            Log.d(
+                                                                "DEBUG_HTTP_REQUEST_DELETE_REPORT",
+                                                                e.message.toString()
+                                                            )
+                                                        }
+
+                                                        override fun onResponse(
+                                                            call: Call,
+                                                            response: Response
+                                                        ) {
+                                                            model.isDeleteReportRequested.value = false
+                                                            coroutineScope.launch {
+//                                                            modalBottomSheetState.hide()
+                                                                bottomSheetState.collapse()
+                                                            }
+                                                            Log.d(
+                                                                "DEBUG_HTTP_REQUEST_DELETE_REPORT",
+                                                                response.code.toString()
+                                                            )
+                                                        }
+                                                    })
+                                            }
+                                        }else{
+                                            model.deleteReport(model.reportId.value)
+                                        }
+                                    },
+                                    negativeButtonAction = {
+                                        deleteReportDialog.value = false
+                                    },
+                                    positiveButtonText = stringResource(id =R.string.btn_trip_history_detail_alert_delete),
+                                    negativeButtonText = stringResource(id = R.string.btn_setting_appBar_cancel),
+                                    positiveButtonTextColor = Color(0xFFEA4E34),
+                                    negativeButtonTextColor = Color.Black,
+                                    positiveButtonModifier = Modifier
+                                        .fillMaxWidth(0.49f)
+                                        .border(
+                                            width = 1.dp,
+                                            color = Color(0xFFEA4E34),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) ,
+                                    negativeButtonModifier = Modifier
+                                        .fillMaxWidth()
+                                        .border(
+                                            width = 1.dp,
+                                            color = Color.Black,
+                                            shape = RoundedCornerShape(8.dp)
+                                        ),
+                                    positiveButtonBgColor = Color.White,
+                                    negativeButtonBgColor = Color.White,
+
+                                    )
+                            }
+                            if(showTripDialog.value){
+                                startTripDialog(
+                                    onClickStart = {
+                                        model.isTripStarted.value = true
+                                        resetTrip()
+                                        lrouteCoordinates.clear()
+                                        showTripDialog.value = false
+                                    },
+                                    onClickContinue = {
+//                                            routeCoordinates.addAll(LocationService.LSS.TripRoutePoints)
+                                        model.isTripStarted.value = true
+                                        showTripDialog.value = false
+//                                            tempRouteCoordinates.clear()
+                                    }, onDismiss = {
+                                        showTripDialog.value = false
+                                    })
+                            }
+                            if (showRegisterDialog.value) {
+                                showRegisterDialog(
+                                    onDismiss = { showRegisterDialog.value = true },
+                                    onPositiveClick = {
+                                        if (it.length >= 2){
+                                            db.collection(DB_REF_USER).document(mAuth.currentUser!!.uid).update("username",it).addOnSuccessListener {
+                                                showRegisterDialog.value = false
+                                            }
+                                        }
+                                    },
+                                )
+                            }
+                            if (showEditReportDialog.value) {
+                                showEditReportDialog(
+                                    onDismiss = { showEditReportDialog.value = false },
+                                    speedLimit = speedLimit,
+                                    onPositiveClick = {
+                                        it?.let {updatedSpeedLimit ->
+                                            db.collection(DB_REF_REPORT).document(reportIdEditing).update("reportSpeedLimit",updatedSpeedLimit).addOnSuccessListener {
+                                                showEditReportDialog.value = false
+                                                Toast.makeText(context,"Speed limit updated successfully to $updatedSpeedLimit.",Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+
+                                    },
+                                )
+                            }
+                            if (showAddReportManuallyDialog.value) {
+                                showAddReportManuallyDialog(
+                                    onDismiss = { showAddReportManuallyDialog.value = false },
+                                    onPositiveClick = {point,type,time,limit, address ->
+                                        model.addReport(geoPoint = point, reportType = type,time = time,speedLimit = limit,address = address)
+                                        showAddReportManuallyDialog.value = false
+                                    }, clickedPoint = pointClickedOnMap.value
+                                )
+                            }
+                            LaunchedEffect(Unit){
+                                delay(7000)
+                                model.createMarkerOnMap(model.allReports)
+                            }
+                            LaunchedEffect(Unit){
+                                if(isFirstLunch){
+                                    Log.d("MAP_ANIMATION_DEBUG","Hi you")
+                                    model.mapView.camera.apply {
+                                        val zoom = createZoomAnimator(
+                                            cameraAnimatorOptions(14.5) {
+                                                startValue(7.0)
+                                            }
+                                        ) {
+                                            startDelay = 1500
+                                            duration = 2000
+                                            interpolator = AccelerateDecelerateInterpolator()
+                                        }
+                                        playAnimatorsSequentially(zoom)
+                                    }
+                                    isFirstLunch = false
+                                }else{
 //                                        model.initLocationComponent()
 //                                        model.setupGesturesListener()
 
-                                        val cameraPosition = CameraOptions.Builder()
-                                            .zoom(14.5)
-                                            .center(Point.fromLngLat(model.lastLocation.value.latitude,model.lastLocation.value.latitude))
-                                            .build()
-                                        model.mapView.getMapboxMap().setCamera(cameraPosition)
-                                        model.isCameraMove.value
-                                    }
-
+                                    val cameraPosition = CameraOptions.Builder()
+                                        .zoom(14.5)
+                                        .center(Point.fromLngLat(model.lastLocation.value.latitude,model.lastLocation.value.latitude))
+                                        .build()
+                                    model.mapView.getMapboxMap().setCamera(cameraPosition)
+                                    model.isCameraMove.value
                                 }
 
                             }
-                        }
-                        val langCode = model.langCode.observeAsState()
 
-                        var locale = Locale("en")
-                        langCode.value?.let {
-                            locale = Locale(it)
                         }
-                        configuration.setLocale(locale)
-                        //context.createConfigurationContext(configuration)
-                        if (langCode.value == "ku"){
-                            configuration.setLayoutDirection(Locale("ar"))
-                        }
-                        resources.updateConfiguration(configuration, resources.displayMetrics)
-
-                        Log.d("CurrentLocalDebug",resources.configuration.locales.get(0).language)
                     }
-                )
+                    val langCode = model.langCode.observeAsState()
+
+                    var locale = Locale("en")
+                    langCode.value?.let {
+                        locale = Locale(it)
+                    }
+                    configuration.setLocale(locale)
+                    //context.createConfigurationContext(configuration)
+                    if (langCode.value == "ku"){
+                        configuration.setLayoutDirection(Locale("ar"))
+                    }
+                    resources.updateConfiguration(configuration, resources.displayMetrics)
+
+                    Log.d("CurrentLocalDebug",resources.configuration.locales.get(0).language)
+
+                }
+
+
             }
-//            AnimatedVisibility(
-//                modifier = Modifier.matchParentSize(),
-//                visible = isShowMenu.value,
-//                enter = slideInHorizontally(),
-//                exit = slideOutHorizontally()
-//            ) {
-//                Box(modifier = Modifier
-//                    .wrapContentSize()
-//                    .background(color = Color.Transparent), contentAlignment = Alignment.Center) {
-//                    menu(model = model){
-//                        isShowMenu.value = false
-//                    }
-//                }
-//            }
-//            AnimatedVisibility(
-//                modifier = Modifier.fillMaxSize(),
-//                visible = isShowTrip.value,
-//                enter =  fadeIn(),
-//                exit = fadeOut()
-//            ) {
-//                Box(modifier = Modifier
-//                    .fillMaxSize()
-//                    .background(color = Color.White), contentAlignment = Alignment.Center) {
-//                    Speed(model = model,onClickStart = {
-//                        model.isTripStarted.value = true
-//                        resetTrip()
-//                        lrouteCoordinates.clear()
-//                        showTripDialog.value = false
-//                    },onClickFinish = {
-//                        model.isTripStarted.value = false
-//                        model.trip.value.endTime = Date()
-//                        model.trip.value.distance = TripDistance.value
-//                        model.trip.value.maxSpeed =TripMaxSpeed.value
-//                        model.trip.value.startTime = TripStartTime
-//                        model.trip.value.speedAverage = TripAverageSpeed.value
-//                        model.trip.value.listOfLatLon.addAll(lrouteCoordinates).let { ite ->
-//                            if (ite){
-//                                trips.value?.add(model.trip.value)?.let {itt->
-//                                    if (itt){
-//                                        model.saveTrip(trips.value!!)
-//                                        lrouteCoordinates.clear()
-//                                        resetTrip()
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    },onClickContinue = {
-//                        model.isTripStarted.value = true
-//                        showTripDialog.value = false
-//                    },onClickBack = {
-//                        isShowTrip.value = false
-//                    },onClickResetTrip = {
-//                        model.isTripStarted.value = false
-//                        resetTrip()
-//                    },onClickPause = {
-//                        MyLocationService.LSS.isTripPused.value = !MyLocationService.LSS.isTripPused.value
-//                    }
-//                        ,isPurchasedAdRemove = isPurchasedAdRemove)
-//                }
-//            }
+            AnimatedVisibility(
+                modifier = Modifier.matchParentSize(),
+                visible = isShowMenu.value,
+                enter = slideInHorizontally(),
+                exit = slideOutHorizontally()
+            ) {
+                Box(modifier = Modifier
+                    .wrapContentSize()
+                    .background(color = Color.Transparent), contentAlignment = Alignment.Center) {
+                    AppMenu(model = model, onCloseDrawer = {
+                        isShowMenu.value = false
+                    })
+
+                }
+            }
             AnimatedVisibility(
                 modifier = Modifier.fillMaxSize(),
                 visible = model.isLocationNotAvailable.value,
@@ -1590,6 +1551,62 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
             }
         }
     }
+
+    private fun continueTrip() {
+        model.isTripStarted.value = true
+        showTripDialog.value = false
+    }
+
+    private fun tripReset() {
+        resetTimer()
+        model.isTripStarted.value = false
+        resetTrip()
+    }
+
+    private fun pauseTrip() {
+        if (model.isTimerRunning.value){
+            pauseTimer()
+        }else{
+            startTimer()
+        }
+        MyLocationService.LSS.isTripPused.value = !MyLocationService.LSS.isTripPused.value
+    }
+
+    private fun startTrip() {
+        if (!model.isTimerRunning.value){
+            startTimer()
+        }else{
+            resetTimer()
+            startTimer()
+        }
+        model.isTripStarted.value = true
+        resetTrip()
+        lrouteCoordinates.clear()
+        showTripDialog.value = false
+    }
+
+    private fun saveTrip() {
+        model.isTripStarted.value = false
+        model.trip.value.endTime = Date()
+        model.trip.value.distance = TripDistance.value
+        model.trip.value.maxSpeed =TripMaxSpeed.value
+        model.trip.value.startTime = TripStartTime
+        model.trip.value.speedAverage = TripAverageSpeed.value
+//                                    model.trip.value.listOfLatLon.addAll(lrouteCoordinates).let { ite ->
+//                                        if (ite){
+//                                            trips.value?.add(model.trip.value)?.let {itt->
+//                                                if (itt){
+//
+//                                                    model.saveTrip(trips.value!!)
+//                                                    lrouteCoordinates.clear()
+//                                                    resetTrip()
+//                                                }
+//                                            }
+//                                        }
+//                                    }
+        resetTimer()
+    }
+
     @RequiresApi(Build.VERSION_CODES.S)
     private fun addReport(speedLimit:Int?) {
         if (ActivityCompat.checkSelfPermission(
@@ -1606,7 +1623,11 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
             if (it.isComplete) {
                 if (it.result != null) {
                     if (!Utils.isMockLocationEnabled(it.result)){
-                        model.addReport(geoPoint = GeoPoint(it.result.latitude,it.result.longitude), reportType = reportType.value, context = this, speedLimit = speedLimit)
+                        if(model.placeReportValidation(reportCount.value,timeLastReport.value)){
+                            model.addReport(geoPoint = GeoPoint(it.result.latitude,it.result.longitude), reportType = reportType.value, speedLimit = speedLimit)
+                        }else{
+                         isReachedQuotaDialog.value = true
+                        }
                     }else{
                         Toast.makeText(this,"Sorry unable, Please turn off mock location.",Toast.LENGTH_LONG).show()
                     }
@@ -1616,31 +1637,32 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
             }
         }
     }
-    @RequiresApi(Build.VERSION_CODES.S)
-    private fun getReportsAndAddGeofences()  {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        fusedLocationProviderClient.lastLocation.addOnCompleteListener{
-            if (it.isComplete){
-                if (it.result == null) {
-                    model.isLocationNotAvailable.value = true
-                }else{
-                    if (isOnline(this)){
-                        fetchReports(it.result.latitude,it.result.longitude)
-                    }
-                }
-            }
-        }
-        Log.d("TES-gRAAG","set false")
-    }
+
+//    @RequiresApi(Build.VERSION_CODES.S)
+//    private fun getReportsAndAddGeofences()  {
+//        if (ActivityCompat.checkSelfPermission(
+//                this,
+//                Manifest.permission.ACCESS_FINE_LOCATION
+//            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+//                this,
+//                Manifest.permission.ACCESS_COARSE_LOCATION
+//            ) != PackageManager.PERMISSION_GRANTED
+//        ) {
+//            return
+//        }
+//        fusedLocationProviderClient.lastLocation.addOnCompleteListener{
+//            if (it.isComplete){
+//                if (it.result == null) {
+//                    model.isLocationNotAvailable.value = true
+//                }else{
+//                    if (isOnline(this)){
+//                        fetchReports(it.result.latitude,it.result.longitude)
+//                    }
+//                }
+//            }
+//        }
+//        Log.d("TES-gRAAG","set false")
+//    }
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onResume() {
         super.onResume()
@@ -1651,6 +1673,7 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
     override fun onStart() {
         super.onStart()
         model.appLaunchTime.value = Date()
+        navigationBarHeight.value =  pxToDp(getNavigatingBarHeight(this))
         Intent(applicationContext, MyLocationService::class.java).apply {
 
             action = MyLocationService.ACTION_START
@@ -1902,8 +1925,6 @@ class HomeActivity : ComponentActivity() , EasyPermissions.PermissionCallbacks  
     var counter = 0
     private suspend fun dataToList(task : Task<QuerySnapshot>,i:Int, latitude: Double, longitude: Double,size:Int){
 try {
-//    val geoqury = GeoFireUtils.getGeoHashQueryBounds(GeoLocation(latitude,longitude),50.0)
-//    Log.d("TESTGEOQURY_IMPO","A: "+geoqury.size.toString())
     val radius = when (model.userType.value) {
         2 -> {50}
         1 -> {25}
@@ -1926,6 +1947,7 @@ try {
                     when(i){
                         0->{
                             tempReports1.add(repo)
+                            model.createMarkerOnMap(tempReports3)
                             if (report.reportType != 405 && report.reportType != 7) {
                                 tempGeofence1.add(
                                     Geofence.Builder()
@@ -1945,6 +1967,7 @@ try {
                         }
                         1->{
                             tempReports2.add(repo)
+                            model.createMarkerOnMap(tempReports3)
                             if (report.reportType != 405 && report.reportType != 7) {
                                 tempGeofence2.add(
                                     Geofence.Builder()
@@ -1962,6 +1985,7 @@ try {
                         }
                         2->{
                             tempReports3.add(repo)
+                            model.createMarkerOnMap(tempReports3)
                             if (report.reportType != 405 && report.reportType != 7) {
                                 tempGeofence3.add(
                                     Geofence.Builder()
@@ -1979,6 +2003,7 @@ try {
                         }
                         3->{
                             tempReports4.add(repo)
+                            model.createMarkerOnMap(tempReports3)
                             if (report.reportType != 405 && report.reportType != 7) {
                                 tempGeofence4.add(
                                     Geofence.Builder()
@@ -2004,7 +2029,7 @@ try {
         model.allReports.clear()
         addGeofences(concatenate(tempGeofence1, tempGeofence2, tempGeofence3,tempGeofence4))
         model.allReports.addAll(concatenate(tempReports1, tempReports2, tempReports3,tempReports4))
-        model.createMarkerOnMap(concatenate(tempReports1, tempReports2, tempReports3,tempReports4))
+//        model.createMarkerOnMap(concatenate(tempReports1, tempReports2, tempReports3,tempReports4))
 //        Log.d("TESTGEOQURY_IMPO","B: "+concatenate(tempReports1, tempReports2, tempReports3,tempReports4).size.toString())
         counter = 0
     }else{

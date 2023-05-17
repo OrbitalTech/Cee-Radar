@@ -20,12 +20,16 @@ object Constants {
     const val PREFERENCE_USER_TYPE = "userType"
     const val PREFERENCE_ADS_WATCH_TIME = "adsWatchTime"
     const val DB_REF_REPORT = "Reports"
+    const val DEBUG_MODE_PREF_KEY = "debugModePrefKey"
+    const val DB_REF_REPORT_DEBUG = "ReportsDebug"
     const val DB_REF_ARCHIVE_REPORT = "ArchiveReports"
     const val DB_REF_ALERTED = "Alerted"
     const val DB_REF_USER = "Users"
     const val LANGUAGE_CODE = "lang_code"
     const val CIRCLE_RADIUS_M = 250f
     const val GEOFENCE_RADIUS_M = "Geofence_radius"
+    const val REPORT_COUNTER_PER_ONE_HOUR = "reportCountPerOneHours"
+    const val SAVE_LAST_REPORT = "saveLastReport"
     const val MAX_SPEED = 360
 
     const val OFFSET_X = 20f

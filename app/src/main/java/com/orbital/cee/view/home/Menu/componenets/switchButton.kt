@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.MutableLiveData
 import com.orbital.cee.view.trip.advancedShadow
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -45,9 +46,9 @@ fun switchButton(isActive:MutableState<Boolean>,isUserAdmin:Boolean,onClick :()-
             detectTapGestures(onTap = {
                 horizontalBias *= -1
                 isActive.value = horizontalBias == 1f
-                if (isUserAdmin){
+                if (isUserAdmin) {
                     onClick.invoke()
-                }else{
+                } else {
                     coroutineScope.launch {
                         delay(500)
                         horizontalBias = 1f
@@ -85,8 +86,8 @@ fun switchButton(isActive:MutableState<Boolean>,isUserAdmin:Boolean,onClick :()-
 
 }
 @Composable
-fun switchButtonNormal(isActive:MutableState<Boolean>){
-    var horizontalBias by remember { mutableStateOf(-1f) }
+fun switchButtonNormal(isActive:MutableLiveData<Boolean>,isOn:(isOn : Boolean)->Unit){
+    var horizontalBias by remember { mutableStateOf(if (isActive.value == true){1f}else{-1f}) }
     val alignment by animateHorizontalAlignmentAsState(horizontalBias)
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -96,6 +97,16 @@ fun switchButtonNormal(isActive:MutableState<Boolean>){
     var color2 = remember {
         mutableStateOf(Color(0xFFECEEFD))
     }
+    LaunchedEffect(Unit){
+        if (isActive.value == true) {
+            color1.value = Color(0xFF495CE8)
+            color2.value = Color(0xFFECEEFD)
+        } else {
+            color1.value = Color(0xFFECEEFD)
+            color2.value = Color(0xFF495CE8)
+        }
+    }
+
     Column(modifier = Modifier
         .width(120.dp)
         .height(45.dp)
@@ -109,19 +120,24 @@ fun switchButtonNormal(isActive:MutableState<Boolean>){
         )
         .pointerInput(Unit) {
             detectTapGestures(onTap = {
-                color1.value = Color(0xFFECEEFD)
-                color2.value = Color(0xFF495CE8)
                 horizontalBias *= -1
                 isActive.value = horizontalBias == 1f
-
-                coroutineScope.launch {
-                    delay(700)
-                    horizontalBias = -1f
-                    isActive.value = true
+                isOn(horizontalBias == 1f)
+                if (isActive.value == true) {
                     color1.value = Color(0xFF495CE8)
                     color2.value = Color(0xFFECEEFD)
-                    //Toast.makeText(context,"sorry, dark mode currently unavailable.",Toast.LENGTH_LONG).show()
+                } else {
+                    color1.value = Color(0xFFECEEFD)
+                    color2.value = Color(0xFF495CE8)
                 }
+//                coroutineScope.launch {
+//                    delay(700)
+//                    horizontalBias = -1f
+//                    isActive.value = true
+//                    color1.value = Color(0xFF495CE8)
+//                    color2.value = Color(0xFFECEEFD)
+//                    //Toast.makeText(context,"sorry, dark mode currently unavailable.",Toast.LENGTH_LONG).show()
+//                }
 
             })
         }
@@ -133,7 +149,7 @@ fun switchButtonNormal(isActive:MutableState<Boolean>){
                 .background(color = color2.value, shape = RoundedCornerShape(100.dp))
             , contentAlignment = Alignment.Center){
 //            Crossfade(targetState = isActive.value) { isChecked ->
-//                if (isChecked) {
+//                if (isChecked == true) {
 //                    Icon(modifier = Modifier.size(17.dp),painter = painterResource(id = com.orbital.cee.R.drawable.ic_moon), contentDescription ="", tint = Color.Unspecified )
 //                } else {
 //                    Icon(modifier = Modifier.size(17.dp),painter = painterResource(id = com.orbital.cee.R.drawable.ic_sun), contentDescription ="", tint = Color.White )
@@ -149,14 +165,16 @@ private fun animateHorizontalAlignmentAsState(
     targetBiasValue: Float
 ): State<BiasAlignment.Horizontal> {
     val bias by animateFloatAsState(targetBiasValue)
-    return derivedStateOf { BiasAlignment.Horizontal(bias) }
+    return remember { derivedStateOf { BiasAlignment.Horizontal(bias) } }
 }
 @Preview(showBackground = true)
 @Composable
 fun defaultPreviewe(){
     val ab = remember {
-        mutableStateOf(true)
+        MutableLiveData(false)
     }
-    switchButtonNormal(isActive = ab)
+    switchButtonNormal(isActive = ab){
+
+    }
 
 }

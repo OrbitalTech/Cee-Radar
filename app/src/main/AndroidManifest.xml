@@ -3,6 +3,7 @@
     package="com.orbital.cee">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_PRIVILEGED_PHONE_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -88,6 +89,7 @@
         <activity
             android:name=".view.home.HomeActivity"
             android:exported="false"
+            android:keepScreenOn="true"
             android:label="@string/title_activity_home"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.CEE" />

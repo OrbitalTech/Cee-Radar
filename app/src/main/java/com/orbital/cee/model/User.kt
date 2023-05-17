@@ -35,6 +35,8 @@ class UserNew(
     var userEmail: String? = null ,
     var userGender: String? = null,
     var userType: Int? = null,
-    var username: String? = null
+    var username: String? = null,
+    var userPoint: Int? = null,
+    var userLevel: Int? = null
 
 )

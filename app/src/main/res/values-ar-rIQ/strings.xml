@@ -185,4 +185,6 @@
     <string name="lbl_error_report_place_dialog_description">قم بالقيادة أثناء فتح Cee لمسافة 15 كم لإلغاء تأمين القدرة على إضافة تقرير</string>
     <string name="inside_geofence_notification_title">ابطئ!</string>
     <string name="inside_geofence_notification_description">لقد حددنا خطر الطريق القريب ، فتابع بحذر!</string>
+    <string name="lbl_reach_permitted_quota_report_description">لقد وصلت إلى الحصة المسموح بها من التقارير</string>
+    <string name="lbl_reach_permitted_quota_report_title">تجاوز الحد</string>
 </resources>

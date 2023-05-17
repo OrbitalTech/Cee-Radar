@@ -3,12 +3,22 @@ package com.orbital.cee.core
 import android.app.Service
 import android.content.Intent
 import android.location.Location
+import android.os.Build
 import android.os.IBinder
+import android.util.Log
+import androidx.annotation.RequiresApi
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.NotificationCompat
+import kotlinx.serialization.json.Json
 import com.google.android.gms.location.LocationServices
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.gson.Gson
 import com.orbital.cee.R
+import com.orbital.cee.core.MyLocationService.GlobalStreetSpeed.streetSpeedLimit
 import com.orbital.cee.core.MyLocationService.LSS.resetTrip
+import com.orbital.cee.model.OverpassResponse
+import com.orbital.cee.model.WeatherDto
 import com.orbital.cee.utils.MetricsUtils
 
 import kotlinx.coroutines.CoroutineScope
@@ -18,6 +28,16 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.tasks.await
+import kotlinx.serialization.Serializable
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import java.io.IOException
 import java.util.*
 
 class MyLocationService: Service() {
@@ -78,22 +98,29 @@ class MyLocationService: Service() {
             TripMaxSpeed.value = 0
         }
     }
+    object GlobalStreetSpeed{
+        var streetSpeedLimit: MutableState<Double?> = mutableStateOf(null)
+    }
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var locationClient: LocationClient
-
+    private lateinit var db : FirebaseFirestore
     override fun onBind(p0: Intent?): IBinder? {
         return null
     }
 
     override fun onCreate() {
         super.onCreate()
+        db = FirebaseFirestore.getInstance()
         locationClient = DefaultLocationClient(
             applicationContext,
             LocationServices.getFusedLocationProviderClient(applicationContext)
         )
         resetTrip()
+
+
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when(intent?.action) {
             ACTION_START -> start()
@@ -102,6 +129,7 @@ class MyLocationService: Service() {
         return super.onStartCommand(intent, flags, startId)
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private fun start() {
         val notification = NotificationCompat.Builder(this, "location")
             .setContentTitle("Cee uses location")
@@ -111,7 +139,45 @@ class MyLocationService: Service() {
         locationClient
             .getLocationUpdates(500L)
             .catch { e -> e.printStackTrace() }
-            .onEach {}
+            .onEach {
+                if (GeofenceBroadcastReceiver.GBRS.GeoId.value != null){
+                    GeofenceBroadcastReceiver.GBRS.GeoId.value?.let {rId->
+                        val report = db.collection("ReportsDebug").document(rId).get().await()
+                        val rA = report.get("reportAddress") as? String?
+                        Log.d("DEBUG_VALIDATING_REPORT","$rA")
+                    }
+                }
+                val req = Request.Builder()
+                    .url("https://overpass-api.de/api/interpreter?data=[out:json];way(around:10,35.579388,45.458819)['maxspeed'];out;").get().build()
+
+                val client = OkHttpClient()
+                client.newCall(req).enqueue(object : Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        Log.d("DEBUG_SPEED_LIMIT_STREET",e.message.toString())
+                    }
+                    override fun onResponse(call: Call, response: Response) {
+
+                        response.body?.string()?.let { responseBody->
+                            val data = Gson().fromJson(responseBody, OverpassResponse::class.java)
+                            data.elements.firstOrNull()?.tags?.maxspeed?.let {maxSpeed ->
+                                val digits = maxSpeed.filter { it.isDigit() }
+                                val mphSpeedLimit = digits.toDoubleOrNull()
+
+                                mphSpeedLimit?.let {
+                                    streetSpeedLimit.value = it
+                                } ?: run {
+                                    streetSpeedLimit.value = null
+                                }
+
+                            }
+                            Log.d("DEBUG_SPEED_LIMIT_STREET", "SUC: ${data.elements.firstOrNull()?.tags?.maxspeed}")
+                        }
+
+
+
+                    }
+                })
+            }
             .launchIn(serviceScope)
 
         startForeground(1, notification.build())

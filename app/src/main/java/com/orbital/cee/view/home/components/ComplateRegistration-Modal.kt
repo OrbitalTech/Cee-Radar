@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.ButtonDefaults.elevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -37,6 +38,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.GeoPoint
 import com.orbital.cee.R
 import com.orbital.cee.model.ActionsButtonModel
+import com.orbital.cee.utils.MetricsUtils.Companion.getAddress
 
 
 import com.orbital.cee.view.home.HomeViewModel
@@ -45,6 +47,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.math.roundToInt
 
 @Composable
 fun ReportModalConfirmation(model: HomeViewModel, onPositiveClick: () -> Unit) {
@@ -282,11 +285,15 @@ fun RegisterModal(onPositiveClick: (username:String) -> Unit) {
 }
 
 @Composable
-fun AddReportManuallyModal(onPositiveClick: (point:GeoPoint,type:Int,time:Timestamp,speedLimit:Int?) -> Unit,clickedPoint: GeoPoint) {
-    val lat = remember { mutableStateOf("${clickedPoint.latitude}") }
+fun AddReportManuallyModal(onPositiveClick: (point:GeoPoint,type:Int,time:Timestamp,speedLimit:Int?,reportAddress : String) -> Unit,clickedPoint: GeoPoint) {
+    val reportAddressName = remember { mutableStateOf("") }
     val lon = remember { mutableStateOf("${clickedPoint.longitude}") }
     val speedLimit = remember { mutableStateOf("0") }
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+    LaunchedEffect(Unit){
+        reportAddressName.value =  getAddress(clickedPoint.latitude,clickedPoint.longitude, context)
+    }
 
     var reportTypeSelected = remember {
         mutableStateOf(1)
@@ -379,7 +386,7 @@ fun AddReportManuallyModal(onPositiveClick: (point:GeoPoint,type:Int,time:Timest
         }, mYear, mMonth, mDay
     )
     Box(modifier = Modifier
-        .height(500.dp)
+        .height(600.dp)
         .fillMaxWidth()
         .pointerInput(Unit) {
             detectTapGestures(onTap = {
@@ -390,52 +397,72 @@ fun AddReportManuallyModal(onPositiveClick: (point:GeoPoint,type:Int,time:Timest
         Box(modifier = Modifier.fillMaxSize(),contentAlignment = Alignment.BottomCenter){
             Card(
                 Modifier
-                    .height(450.dp)
+                    .height(550.dp)
                     .fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 backgroundColor = Color.White
 
             ) {
                 Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(modifier = Modifier.fillMaxWidth(0.6f),text = "Place Report Manually", textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text(modifier = Modifier.fillMaxWidth(0.6f),text = "Place Report Manually", textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Spacer(modifier = Modifier.fillMaxHeight(0.05f))
-                    Row(modifier = Modifier.fillMaxWidth(0.9f)){
-                        OutlinedTextField(
-                            modifier = Modifier
-                                .fillMaxWidth(0.49f)
-                                .padding(horizontal = 2.dp)
-                                .border(
-                                    BorderStroke(2.dp, Color(0xFFE4E4E4)),
-                                    shape = RoundedCornerShape(10.dp)
-                                ),
-                            value = lat.value,
-                            placeholder = {
-                                Text(text = "Latitude" , color = Color(0XFFAAAAAA),fontSize = 14.sp)
-                            },
-                            onValueChange = {lat.value = it},
-                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done,keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(10.dp),
-                        )
-                        OutlinedTextField(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 2.dp)
-                                .border(
-                                    BorderStroke(2.dp, Color(0xFFE4E4E4)),
-                                    shape = RoundedCornerShape(10.dp)
-                                ),
-                            value = lon.value,
-                            placeholder = {
-                                Text(text = "Longitude" , color = Color(0XFFAAAAAA), fontSize = 14.sp)
-                            },
-                            onValueChange = {lon.value = it},
-                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done, keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(10.dp),
-                        )
+                    Row(modifier = Modifier.fillMaxWidth(0.9f), horizontalArrangement = Arrangement.SpaceBetween){
+                        Text(text = "Latitude: ${(clickedPoint.latitude * 100000.0).roundToInt() /100000.0}" , color = Color(0XFFAAAAAA),fontSize = 14.sp)
+//                        OutlinedTextField(
+//                            modifier = Modifier
+//                                .fillMaxWidth(0.49f)
+//                                .padding(horizontal = 2.dp)
+//                                .border(
+//                                    BorderStroke(2.dp, Color(0xFFE4E4E4)),
+//                                    shape = RoundedCornerShape(10.dp)
+//                                ),
+//                            value = lat.value,
+//                            placeholder = {
+//                                Text(text = "Latitude" , color = Color(0XFFAAAAAA),fontSize = 14.sp)
+//                            },
+//                            onValueChange = {lat.value = it},
+//                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+//                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done,keyboardType = KeyboardType.Number),
+//                            shape = RoundedCornerShape(10.dp),
+//                        )
+                        Text(text = "Longitude: ${(clickedPoint.longitude * 100000.0).roundToInt() /100000.0}" , color = Color(0XFFAAAAAA), fontSize = 14.sp)
+//                        OutlinedTextField(
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(horizontal = 2.dp)
+//                                .border(
+//                                    BorderStroke(2.dp, Color(0xFFE4E4E4)),
+//                                    shape = RoundedCornerShape(10.dp)
+//                                ),
+//                            value = lon.value,
+//                            placeholder = {
+//                                Text(text = "Longitude" , color = Color(0XFFAAAAAA), fontSize = 14.sp)
+//                            },
+//                            onValueChange = {lon.value = it},
+//                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+//                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done, keyboardType = KeyboardType.Number),
+//                            shape = RoundedCornerShape(10.dp),
+//                        )
                     }
-                    Spacer(modifier = Modifier.fillMaxHeight(0.05f))
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                            modifier = Modifier
+                                .fillMaxWidth(0.9f)
+                                .padding(horizontal = 2.dp)
+                                .border(
+                                    BorderStroke(2.dp, Color(0xFFE4E4E4)),
+                                    shape = RoundedCornerShape(10.dp)
+                                ),
+                            value = reportAddressName.value,
+                            placeholder = {
+                                Text(text = "Address" , color = Color(0XFFAAAAAA), fontSize = 14.sp)
+                            },
+                            onValueChange = {reportAddressName.value = it},
+                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                            shape = RoundedCornerShape(10.dp),
+                        )
+                    Spacer(modifier = Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically, modifier = Modifier
                         .fillMaxWidth()
                         .height(100.dp)
@@ -519,8 +546,8 @@ fun AddReportManuallyModal(onPositiveClick: (point:GeoPoint,type:Int,time:Timest
                         Button(
                             onClick ={
                                 onPositiveClick(
-                                GeoPoint(lat.value.toDouble(),lon.value.toDouble()),reportTypeSelected.value,
-                                    stringToTimestamp(mDate.value+" "+mTime.value),speedLimit.value.toInt()
+                                    clickedPoint,reportTypeSelected.value,
+                                    stringToTimestamp(mDate.value+" "+mTime.value),speedLimit.value.toInt(),reportAddressName.value
                                 )
                                      },
                             shape = RoundedCornerShape(8.dp),

@@ -40,22 +40,22 @@ import com.mapbox.geojson.LineString.fromLngLats
 import com.mapbox.geojson.MultiLineString.fromLngLats
 import com.mapbox.geojson.MultiPoint.fromLngLats
 import com.mapbox.maps.*
-import com.mapbox.maps.extension.style.layers.addLayer
-import com.mapbox.maps.extension.style.layers.generated.lineLayer
-import com.mapbox.maps.extension.style.layers.properties.generated.LineCap
-import com.mapbox.maps.extension.style.layers.properties.generated.LineJoin
-import com.mapbox.maps.extension.style.sources.addSource
-import com.mapbox.maps.extension.style.sources.generated.geoJsonSource
-import com.mapbox.maps.plugin.animation.easeTo
-import com.mapbox.maps.plugin.animation.flyTo
-import com.mapbox.maps.plugin.annotation.AnnotationConfig
-import com.mapbox.maps.plugin.annotation.annotations
-import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
-import com.mapbox.maps.plugin.compass.compass
-import com.mapbox.maps.plugin.gestures.gestures
-import com.mapbox.maps.plugin.logo.logo
-import com.mapbox.maps.plugin.scalebar.scalebar
-import com.mapbox.maps.viewannotation.viewAnnotationOptions
+//import com.mapbox.maps.extension.style.layers.addLayer
+//import com.mapbox.maps.extension.style.layers.generated.lineLayer
+//import com.mapbox.maps.extension.style.layers.properties.generated.LineCap
+//import com.mapbox.maps.extension.style.layers.properties.generated.LineJoin
+//import com.mapbox.maps.extension.style.sources.addSource
+//import com.mapbox.maps.extension.style.sources.generated.geoJsonSource
+//import com.mapbox.maps.plugin.animation.easeTo
+//import com.mapbox.maps.plugin.animation.flyTo
+//import com.mapbox.maps.plugin.annotation.AnnotationConfig
+//import com.mapbox.maps.plugin.annotation.annotations
+//import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
+//import com.mapbox.maps.plugin.compass.compass
+//import com.mapbox.maps.plugin.gestures.gestures
+//import com.mapbox.maps.plugin.logo.logo
+//import com.mapbox.maps.plugin.scalebar.scalebar
+//import com.mapbox.maps.viewannotation.viewAnnotationOptions
 import com.orbital.cee.R
 import com.orbital.cee.core.Constants
 import com.orbital.cee.core.Permissions
@@ -153,54 +153,54 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
                             color = Color(0XFFE4E4E4),
                             shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)
                         )) {
-                        AndroidView(modifier = Modifier
-                            .height(240.dp)
-                            .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)),factory = {
-                            MapView(context).apply {
-                                getMapboxMap().loadStyleUri("mapbox://styles/orbital-cee/cl5wwmzcw000814qoaa1zkqrw") {sty ->
-                                    trip.listOfLatLon.let { points ->
-                                        val polygon = Polygon.fromLngLats(listOf(points))
-                                        val cameraPosition = getMapboxMap().cameraForGeometry(polygon,padding =  EdgeInsets(220.0, 320.0, 220.0, 320.0))
-                                        val viewAnnotationManager = this.viewAnnotationManager
-                                        viewAnnotationManager.addViewAnnotation(
-                                            R.layout.camera_report_annotation,
-                                            viewAnnotationOptions {
-                                                geometry(points[0])
-                                                allowOverlap(false)
-                                                anchor(ViewAnnotationAnchor.BOTTOM)
-                                                visible(true)
-                                            }
-                                        )
-                                        viewAnnotationManager.addViewAnnotation(
-                                            R.layout.police_report_annotation,
-                                            viewAnnotationOptions {
-                                                geometry(points[trip.listOfLatLon.size - 1])
-                                                allowOverlap(false)
-                                                anchor(ViewAnnotationAnchor.CENTER)
-                                                visible(true)
-                                            }
-                                        )
-                                        getMapboxMap().setCamera(cameraPosition)
-                                    }
-                                    val lineString = trip.listOfLatLon.let { LineString.fromLngLats(it) }
-                                    val feature = Feature.fromGeometry(lineString)
-                                    val data = geoJsonSource("line") {
-                                        featureCollection(FeatureCollection.fromFeature(feature))
-                                    }
-                                    sty.addSource(data)
-                                    sty.addLayer(lineLayer("linelayer", "line") {
-                                        lineCap(LineCap.ROUND)
-                                        lineJoin(LineJoin.ROUND)
-                                        lineWidth(4.0)
-                                        lineColor("#495CE8")
-                                    })
-                                }
-                                scalebar.enabled = false
-                                compass.enabled = false
-                                gestures.scrollEnabled = false
-                                gestures.pitchEnabled = false
-                            }
-                        })
+//                        AndroidView(modifier = Modifier
+//                            .height(240.dp)
+//                            .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)),factory = {
+//                            MapView(context).apply {
+//                                getMapboxMap().loadStyleUri("mapbox://styles/orbital-cee/cl5wwmzcw000814qoaa1zkqrw") {sty ->
+//                                    trip.listOfLatLon.let { points ->
+//                                        val polygon = Polygon.fromLngLats(listOf(points))
+//                                        val cameraPosition = getMapboxMap().cameraForGeometry(polygon,padding =  EdgeInsets(220.0, 320.0, 220.0, 320.0))
+//                                        val viewAnnotationManager = this.viewAnnotationManager
+//                                        viewAnnotationManager.addViewAnnotation(
+//                                            R.layout.camera_report_annotation,
+//                                            viewAnnotationOptions {
+//                                                geometry(points[0])
+//                                                allowOverlap(false)
+//                                                anchor(ViewAnnotationAnchor.BOTTOM)
+//                                                visible(true)
+//                                            }
+//                                        )
+//                                        viewAnnotationManager.addViewAnnotation(
+//                                            R.layout.police_report_annotation,
+//                                            viewAnnotationOptions {
+//                                                geometry(points[trip.listOfLatLon.size - 1])
+//                                                allowOverlap(false)
+//                                                anchor(ViewAnnotationAnchor.CENTER)
+//                                                visible(true)
+//                                            }
+//                                        )
+//                                        getMapboxMap().setCamera(cameraPosition)
+//                                    }
+//                                    val lineString = trip.listOfLatLon.let { LineString.fromLngLats(it) }
+//                                    val feature = Feature.fromGeometry(lineString)
+//                                    val data = geoJsonSource("line") {
+//                                        featureCollection(FeatureCollection.fromFeature(feature))
+//                                    }
+//                                    sty.addSource(data)
+//                                    sty.addLayer(lineLayer("linelayer", "line") {
+//                                        lineCap(LineCap.ROUND)
+//                                        lineJoin(LineJoin.ROUND)
+//                                        lineWidth(4.0)
+//                                        lineColor("#495CE8")
+//                                    })
+//                                }
+//                                scalebar.enabled = false
+//                                compass.enabled = false
+//                                gestures.scrollEnabled = false
+//                                gestures.pitchEnabled = false
+//                            }
+//                        })
 
                     }
                     Box(modifier = Modifier
