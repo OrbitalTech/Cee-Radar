@@ -37,6 +37,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.GeoPoint
 import com.orbital.cee.R
 import com.orbital.cee.core.GeofenceBroadcastReceiver
+import com.orbital.cee.core.MyLocationService.LSS.speed
 import com.orbital.cee.view.home.HomeViewModel
 import com.orbital.cee.view.trip.advancedShadow
 import kotlinx.coroutines.GlobalScope
@@ -68,7 +69,7 @@ fun fab (model: HomeViewModel, onClickIndicator: ()-> Unit,onClickReport: ()-> U
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (model.userType.value == 2){
+        if (model.userType.value == 2&& model.isPointClicked.value){
             Button(
                 contentPadding = PaddingValues(0.dp),
                 onClick = onClickReportAddManually,
@@ -122,7 +123,7 @@ fun fab (model: HomeViewModel, onClickIndicator: ()-> Unit,onClickReport: ()-> U
 
         Spacer(modifier = Modifier.height(10.dp))
         androidx.compose.animation.AnimatedVisibility(
-            visible =if(model.userType.value == 2){true}else{ model.speed.value > 10 } ,
+            visible =if(model.userType.value == 2){true}else{speed.value > 10 } ,
             enter = slideInHorizontally(),
             exit = slideOutHorizontally()
         ) {
@@ -221,7 +222,7 @@ fun fab (model: HomeViewModel, onClickIndicator: ()-> Unit,onClickReport: ()-> U
             }
         }
 
-Spacer(modifier = Modifier.height(height = (navigationBarHeight +100).dp))
+Spacer(modifier = Modifier.height(height = (navigationBarHeight +85).dp))
     }
 }
 //fun customShape() =  object : Shape {
@@ -314,7 +315,7 @@ fun showEditReportDialog(
 @Composable
 fun showAddReportManuallyDialog(
     onDismiss: () -> Unit,
-    onPositiveClick: (point: GeoPoint, type:Int, time: Timestamp, speedLimit:Int?,address:String) -> Unit,
+    onPositiveClick: (point: GeoPoint, type:Int, time: Timestamp, speedLimit:Int?,address:String,isWithNoti:Boolean) -> Unit,
     clickedPoint:GeoPoint
 ) {
     Dialog(onDismissRequest = onDismiss,properties = DialogProperties(

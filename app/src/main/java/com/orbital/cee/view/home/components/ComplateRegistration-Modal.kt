@@ -3,6 +3,7 @@ package com.orbital.cee.view.home.components
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.os.Build
+import android.util.Log
 import android.widget.DatePicker
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.*
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.MutableLiveData
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.GeoPoint
@@ -42,6 +44,7 @@ import com.orbital.cee.utils.MetricsUtils.Companion.getAddress
 
 
 import com.orbital.cee.view.home.HomeViewModel
+import com.orbital.cee.view.home.Menu.componenets.switchButtonNormal
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -285,7 +288,7 @@ fun RegisterModal(onPositiveClick: (username:String) -> Unit) {
 }
 
 @Composable
-fun AddReportManuallyModal(onPositiveClick: (point:GeoPoint,type:Int,time:Timestamp,speedLimit:Int?,reportAddress : String) -> Unit,clickedPoint: GeoPoint) {
+fun AddReportManuallyModal(onPositiveClick: (point:GeoPoint,type:Int,time:Timestamp,speedLimit:Int?,reportAddress : String,isWithNotification : Boolean) -> Unit,clickedPoint: GeoPoint) {
     val reportAddressName = remember { mutableStateOf("") }
     val lon = remember { mutableStateOf("${clickedPoint.longitude}") }
     val speedLimit = remember { mutableStateOf("0") }
@@ -371,6 +374,7 @@ fun AddReportManuallyModal(onPositiveClick: (point:GeoPoint,type:Int,time:Timest
     val mTime = remember { mutableStateOf("$mHour:$mMinute") }
     val mDate = remember { mutableStateOf("${mYear}-${mMonth+1}-$mDay") }
 
+    val isWithNotification = remember { mutableStateOf(false) }
 
 
     val mTimePickerDialog = TimePickerDialog(
@@ -385,204 +389,170 @@ fun AddReportManuallyModal(onPositiveClick: (point:GeoPoint,type:Int,time:Timest
             mDate.value = "$mYear-${mMonth+1}-$mDayOfMonth"
         }, mYear, mMonth, mDay
     )
-    Box(modifier = Modifier
-        .height(600.dp)
-        .fillMaxWidth()
-        .pointerInput(Unit) {
-            detectTapGestures(onTap = {
-                focusManager.clearFocus()
-            })
-        }
-        .background(color = Color.Transparent), contentAlignment = Alignment.TopCenter){
-        Box(modifier = Modifier.fillMaxSize(),contentAlignment = Alignment.BottomCenter){
-            Card(
-                Modifier
-                    .height(550.dp)
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                backgroundColor = Color.White
+    Box(
+        Modifier
+            .height(550.dp)
+            .fillMaxWidth()
+            .background(
+                color = Color.White,
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+            ),
 
-            ) {
-                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(modifier = Modifier.fillMaxWidth(0.6f),text = "Place Report Manually", textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Spacer(modifier = Modifier.fillMaxHeight(0.05f))
-                    Row(modifier = Modifier.fillMaxWidth(0.9f), horizontalArrangement = Arrangement.SpaceBetween){
-                        Text(text = "Latitude: ${(clickedPoint.latitude * 100000.0).roundToInt() /100000.0}" , color = Color(0XFFAAAAAA),fontSize = 14.sp)
-//                        OutlinedTextField(
-//                            modifier = Modifier
-//                                .fillMaxWidth(0.49f)
-//                                .padding(horizontal = 2.dp)
-//                                .border(
-//                                    BorderStroke(2.dp, Color(0xFFE4E4E4)),
-//                                    shape = RoundedCornerShape(10.dp)
-//                                ),
-//                            value = lat.value,
-//                            placeholder = {
-//                                Text(text = "Latitude" , color = Color(0XFFAAAAAA),fontSize = 14.sp)
-//                            },
-//                            onValueChange = {lat.value = it},
-//                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-//                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done,keyboardType = KeyboardType.Number),
-//                            shape = RoundedCornerShape(10.dp),
-//                        )
-                        Text(text = "Longitude: ${(clickedPoint.longitude * 100000.0).roundToInt() /100000.0}" , color = Color(0XFFAAAAAA), fontSize = 14.sp)
-//                        OutlinedTextField(
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .padding(horizontal = 2.dp)
-//                                .border(
-//                                    BorderStroke(2.dp, Color(0xFFE4E4E4)),
-//                                    shape = RoundedCornerShape(10.dp)
-//                                ),
-//                            value = lon.value,
-//                            placeholder = {
-//                                Text(text = "Longitude" , color = Color(0XFFAAAAAA), fontSize = 14.sp)
-//                            },
-//                            onValueChange = {lon.value = it},
-//                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-//                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done, keyboardType = KeyboardType.Number),
-//                            shape = RoundedCornerShape(10.dp),
-//                        )
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    OutlinedTextField(
-                            modifier = Modifier
-                                .fillMaxWidth(0.9f)
-                                .padding(horizontal = 2.dp)
-                                .border(
-                                    BorderStroke(2.dp, Color(0xFFE4E4E4)),
-                                    shape = RoundedCornerShape(10.dp)
-                                ),
-                            value = reportAddressName.value,
-                            placeholder = {
-                                Text(text = "Address" , color = Color(0XFFAAAAAA), fontSize = 14.sp)
-                            },
-                            onValueChange = {reportAddressName.value = it},
-                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                            shape = RoundedCornerShape(10.dp),
-                        )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically, modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp)
-                        .padding(horizontal = 10.dp)) {
-
-                        items.forEach { item ->
-                            Box(
-                                modifier = Modifier.pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onTap = {reportTypeSelected.value = item.id}
-                                    )
-                                },
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally,) {
-                                    Box(modifier  = Modifier
-                                        .size(45.dp)
-                                        .clip(shape = RoundedCornerShape(10.dp))
-                                        .border(
-                                            width = if (reportTypeSelected.value == item.id) {
-                                                1.5.dp
-                                            } else {
-                                                (-1).dp
-                                            },
-                                            color = Color(0XFF495CE8),
-                                            shape = RoundedCornerShape(10.dp)
-                                        )
-                                        .background(color = item.color2), contentAlignment = Alignment.Center){
-                                        Icon(painter = painterResource(id = item.icon),modifier = Modifier.size(20.dp), tint = item.color1, contentDescription = item.title )
-                                    }
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    Text(text = item.title, color = Color.Black,fontSize = 8.sp)
-                                }
-                            }
+    ) {
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Top, horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(modifier = Modifier.fillMaxWidth(0.6f),text = "Place Report Manually", textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Spacer(modifier = Modifier.fillMaxHeight(0.05f))
+            Row(modifier = Modifier.fillMaxWidth(0.9f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically){
+                Text(text = "Latitude: ${(clickedPoint.latitude * 10000.0).roundToInt() /10000.0}" , color = Color(0XFFAAAAAA),fontSize = 14.sp)
+                Text(text = "Longitude: ${(clickedPoint.longitude * 10000.0).roundToInt() /10000.0}" , color = Color(0XFFAAAAAA), fontSize = 14.sp)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "Notification", fontSize = 8.sp, modifier = Modifier
+                        .horizontalScroll(rememberScrollState(0)))
+                    Box(modifier = Modifier
+                        .width(73.dp)
+                        .height(47.dp)
+                        .padding(8.dp), contentAlignment = Alignment.Center){
+                        switchButtonNormal(MutableLiveData(isWithNotification.value)){
+                            isWithNotification.value = it
                         }
                     }
-                    Spacer(modifier = Modifier.fillMaxHeight(0.05f))
-                    Row(modifier = Modifier.fillMaxWidth(0.9f)) {
-                        Button(
-                            onClick ={ mDatePickerDialog.show()},
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0XFF495CE8)),
-                            modifier = Modifier
-                                .fillMaxWidth(0.30f)
-                                .height(50.dp)
-                                .padding(horizontal = 2.dp)
-                        ) {
-                            Text(text = "Date", modifier = Modifier.fillMaxWidth(0.6f), textAlign = TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 14.sp)
-                        }
-                        Button(
-                            onClick ={ mTimePickerDialog.show()},
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0XFF495CE8)),
-                            modifier = Modifier
-                                .fillMaxWidth(0.43f)
-                                .height(50.dp)
-                                .padding(horizontal = 2.dp)
-                        ) {
-                            Text(text = "Time", modifier = Modifier.fillMaxWidth(0.6f), textAlign = TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 14.sp)
-                        }
-                        OutlinedTextField(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp)
-                                .padding(horizontal = 2.dp)
-                                .border(
-                                    BorderStroke(2.dp, Color(0xFFE4E4E4)),
-                                    shape = RoundedCornerShape(10.dp)
-                                ),
-                            value = speedLimit.value,
-                            placeholder = {
-                                Text(text = "Speed Limit" , color = Color(0XFFAAAAAA),fontSize = 14.sp)
-                            },
-                            onValueChange = {speedLimit.value = it},
-                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done, keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(10.dp),
-                        )
-                    }
-                    Spacer(modifier = Modifier.fillMaxHeight(0.2f))
-                    Row(modifier = Modifier.fillMaxWidth(0.9f), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Button(
-                            onClick ={
-                                onPositiveClick(
-                                    clickedPoint,reportTypeSelected.value,
-                                    stringToTimestamp(mDate.value+" "+mTime.value),speedLimit.value.toInt(),reportAddressName.value
-                                )
-                                     },
-                            shape = RoundedCornerShape(8.dp),
-                            elevation =  ButtonDefaults.elevation(
-                                defaultElevation = 0.dp,
-                                pressedElevation = 0.dp,
-                                disabledElevation = 0.dp,
-                                hoveredElevation = 0.dp,
-                                focusedElevation = 0.dp
-                            ),
-                            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0XFF495CE8)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(45.dp)
-                        ) {
-                            Text(text = "Place", modifier = Modifier.fillMaxWidth(0.6f), textAlign = TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 14.sp)
-                        }
-                    }
-                }
-                Box(modifier = Modifier.fillMaxSize() , contentAlignment = Alignment.Center){
-                    Box(modifier = Modifier.fillMaxWidth(0.7f)){
-                        Text(text = "")
-                    }
-                }
-                Box(modifier = Modifier.fillMaxSize() , contentAlignment = Alignment.BottomCenter){
-
                 }
 
             }
+            Spacer(modifier = Modifier.height(10.dp))
+            OutlinedTextField(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .padding(horizontal = 2.dp)
+                    .border(
+                        BorderStroke(2.dp, Color(0xFFE4E4E4)),
+                        shape = RoundedCornerShape(10.dp)
+                    ),
+                value = reportAddressName.value,
+                placeholder = {
+                    Text(text = "Address" , color = Color(0XFFAAAAAA), fontSize = 14.sp)
+                },
+                onValueChange = {reportAddressName.value = it},
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                shape = RoundedCornerShape(10.dp),
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically, modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
+                .padding(horizontal = 10.dp)) {
+
+                items.forEach { item ->
+                    Box(
+                        modifier = Modifier.pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = {reportTypeSelected.value = item.id}
+                            )
+                        },
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally,) {
+                            Box(modifier  = Modifier
+                                .size(45.dp)
+                                .clip(shape = RoundedCornerShape(10.dp))
+                                .border(
+                                    width = if (reportTypeSelected.value == item.id) {
+                                        1.5.dp
+                                    } else {
+                                        (-1).dp
+                                    },
+                                    color = Color(0XFF495CE8),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                .background(color = item.color2), contentAlignment = Alignment.Center){
+                                Icon(painter = painterResource(id = item.icon),modifier = Modifier.size(20.dp), tint = item.color1, contentDescription = item.title )
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(text = item.title, color = Color.Black,fontSize = 8.sp)
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.fillMaxHeight(0.05f))
+            Row(modifier = Modifier.fillMaxWidth(0.9f)) {
+                Button(
+                    onClick ={ mDatePickerDialog.show()},
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0XFF495CE8)),
+                    modifier = Modifier
+                        .fillMaxWidth(0.30f)
+                        .height(50.dp)
+                        .padding(horizontal = 2.dp)
+                ) {
+                    Text(text = "Date", modifier = Modifier.fillMaxWidth(0.6f), textAlign = TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 14.sp)
+                }
+                Button(
+                    onClick ={ mTimePickerDialog.show()},
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0XFF495CE8)),
+                    modifier = Modifier
+                        .fillMaxWidth(0.43f)
+                        .height(50.dp)
+                        .padding(horizontal = 2.dp)
+                ) {
+                    Text(text = "Time", modifier = Modifier.fillMaxWidth(0.6f), textAlign = TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 14.sp)
+                }
+                OutlinedTextField(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .padding(horizontal = 2.dp)
+                        .border(
+                            BorderStroke(2.dp, Color(0xFFE4E4E4)),
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                    value = speedLimit.value,
+                    placeholder = {
+                        Text(text = "Speed Limit" , color = Color(0XFFAAAAAA),fontSize = 14.sp)
+                    },
+                    onValueChange = {speedLimit.value = it},
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done, keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(10.dp),
+                )
+            }
+            Spacer(modifier = Modifier.fillMaxHeight(0.2f))
+            Row(modifier = Modifier.fillMaxWidth(0.9f), horizontalArrangement = Arrangement.SpaceBetween) {
+                Button(
+                    onClick ={
+                        onPositiveClick(
+                            clickedPoint,reportTypeSelected.value,
+                            stringToTimestamp(mDate.value+" "+mTime.value),
+                            speedLimit.value.toInt(),
+                            reportAddressName.value,
+                            isWithNotification.value
+                        )
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    elevation =  ButtonDefaults.elevation(
+                        defaultElevation = 0.dp,
+                        pressedElevation = 0.dp,
+                        disabledElevation = 0.dp,
+                        hoveredElevation = 0.dp,
+                        focusedElevation = 0.dp
+                    ),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0XFF495CE8)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(45.dp)
+                ) {
+                    Text(text = "Place", modifier = Modifier.fillMaxWidth(0.6f), textAlign = TextAlign.Center, fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 14.sp)
+                }
+            }
         }
-//        Spacer(modifier = Modifier.height(5.dp))
-        Box(modifier = Modifier
-            .height(100.dp)
-            .width(100.dp)){
-            Icon(painter = painterResource(id = R.drawable.ic_cee_two), tint = Color.Unspecified, contentDescription ="" )
+        Box(modifier = Modifier.fillMaxSize() , contentAlignment = Alignment.Center){
+            Box(modifier = Modifier.fillMaxWidth(0.7f)){
+                Text(text = "")
+            }
+        }
+        Box(modifier = Modifier.fillMaxSize() , contentAlignment = Alignment.BottomCenter){
+
         }
 
     }

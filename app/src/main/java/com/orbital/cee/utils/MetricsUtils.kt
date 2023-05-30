@@ -108,13 +108,13 @@ class MetricsUtils {
         }
         fun bearingToCoordinate(bearing: Float):String{
             return when {
-                bearing == 360f -> {"N"}
-                bearing == 90f -> {"E"}
-                bearing == 180f -> {"S"}
-                bearing == 270f -> {"W"}
-                bearing > 270.0 && bearing < 360.0 -> {"NW"}
-                bearing > 180.0 && bearing < 270.0 -> {"SW"}
-                bearing > 90.0 && bearing < 180.0 -> {"SE"}
+                bearing > 350f && bearing <= 360 -> {"N"}
+                bearing > 80f && bearing <= 100 -> {"E"}
+                bearing > 170f && bearing <= 190 -> {"S"}
+                bearing > 260f && bearing <= 280 -> {"W"}
+                bearing > 260.0 && bearing < 360.0 -> {"NW"}
+                bearing > 170.0 && bearing < 260.0 -> {"SW"}
+                bearing > 80.0 && bearing < 170.0 -> {"SE"}
                 bearing > 0 && bearing < 90.0 -> {"NE"}
                 else -> {"N/A"}
             }
@@ -161,15 +161,15 @@ class MetricsUtils {
         }
         fun calculatePointRemainToNextLevelPersint(currentPoint:Int):Float{
             return if (currentPoint >= 2800){
-                1f.minus((1000000f.minus(currentPoint.minus(2800f))).div(1000000f))
+                1f.minus((1000000f.minus(currentPoint)).div(1000000f))
             }else if (currentPoint >= 1200){
-                1f.minus((2800f.minus(currentPoint.minus(1200f))).div(2800f))
+                1f.minus((2800f.minus(currentPoint)).div(2800f))
             }else if (currentPoint >= 600){
-                1f.minus( (1200f.minus(currentPoint.minus(600f))).div(1200f))
+                1f.minus( (1200f.minus(currentPoint)).div(1200f))
             }else if ( currentPoint >= 200){
-                1f.minus((600f.minus(currentPoint.minus(200f))).div(600f))
+                1f.minus((600f.minus(currentPoint)).div(600f))
             }else if(currentPoint >= 100){
-                1f.minus((200f.minus(currentPoint.minus(100f))).div(200f))
+                1f.minus((200f.minus(currentPoint)).div(200f))
             }else{
                 1f.minus((100f.minus(currentPoint)).div(200f))
             }

@@ -1,5 +1,6 @@
 package com.orbital.cee.view.home.Menu
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -18,6 +19,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
@@ -32,14 +34,29 @@ import com.orbital.cee.model.OnBoardingModel
 @Composable
 fun help (onClickBack:()-> Unit) {
 
+    val context = LocalContext.current
     val questions = ArrayList<HelpQuestionModel>()
-    questions.add(HelpQuestionModel("How to place a camera?","Scroll down from the top to open the notification bar, then slide the notification you don’t want to the left and tap the Settings icon. Select DISABLE NOTIFICATIONS. In this step, you can also select MORE SETTINGS to enter the Manage Notifications interface and customize your notifications for specific applications.",remember {mutableStateOf(false) }))
-    questions.add(HelpQuestionModel("How to report an accident?","",remember {mutableStateOf(false) }))
-    questions.add(HelpQuestionModel("How to change my phone number?","",remember {mutableStateOf(false) }))
-    questions.add(HelpQuestionModel("Where can i find report list?","",remember {mutableStateOf(false) }))
-    questions.add(HelpQuestionModel("How can i share cee with my friend?","",remember {mutableStateOf(false) }))
-    questions.add(HelpQuestionModel("How many hours does a report last?","",remember {mutableStateOf(false) }))
-    questions.add(HelpQuestionModel("How can i mute notifications?","", remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q1),context.getString(R.string.q_and_a_help_a1), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q2),context.getString(R.string.q_and_a_help_a2), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q3),context.getString(R.string.q_and_a_help_a3), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q4),context.getString(R.string.q_and_a_help_a4), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q5),context.getString(R.string.q_and_a_help_a5), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q6),context.getString(R.string.q_and_a_help_a6), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q7),context.getString(R.string.q_and_a_help_a7), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q8),context.getString(R.string.q_and_a_help_a8), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q9),context.getString(R.string.q_and_a_help_a9), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q10),context.getString(R.string.q_and_a_help_a10), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q11),context.getString(R.string.q_and_a_help_a11), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q12),context.getString(R.string.q_and_a_help_a12), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q13),context.getString(R.string.q_and_a_help_a13), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q14),context.getString(R.string.q_and_a_help_a14), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q15),context.getString(R.string.q_and_a_help_a15), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q16),context.getString(R.string.q_and_a_help_a16), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q17),context.getString(R.string.q_and_a_help_a17), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q18),context.getString(R.string.q_and_a_help_a18), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q19),context.getString(R.string.q_and_a_help_a19), remember {mutableStateOf(false) }))
+    questions.add(HelpQuestionModel(context.getString(R.string.q_and_a_help_q20),context.getString(R.string.q_and_a_help_a20), remember {mutableStateOf(false) }))
+
 
     val rotate = if (LocalConfiguration.current.layoutDirection == LayoutDirection.Rtl.ordinal){180f}else{0f}
     Column(modifier = Modifier.fillMaxSize().pointerInput(Unit) {
@@ -93,9 +110,15 @@ fun help (onClickBack:()-> Unit) {
                 Divider(thickness = 1.dp, color = Color(0xFFD9D9D9))
                 Row(modifier = Modifier
                     .fillMaxSize(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = question.title, fontWeight = FontWeight.Bold)
+                    Text(modifier = Modifier.fillMaxWidth(0.9f), text = question.title, fontWeight = FontWeight.Bold)
                     IconButton(onClick = {question.isExpanded.value = !question.isExpanded.value}){
-                        Icon(modifier = Modifier.size(18.dp).rotate(degrees =if (question.isExpanded.value) 0f else rotate), tint = Color(0xff707070),painter = painterResource(id = if (question.isExpanded.value){R.drawable.ic_arrow_dropdown}else{R.drawable.ic_arrow}), contentDescription = "")
+                        Crossfade(targetState = question.isExpanded.value) { isChecked ->
+                            if (isChecked) {
+                                Icon(modifier = Modifier.size(18.dp), tint = Color(0xff707070),painter = painterResource(id = R.drawable.ic_arrow_down), contentDescription = "")
+                            } else {
+                                Icon(modifier = Modifier.size(18.dp).rotate(rotate), tint = Color(0xff707070),painter = painterResource(id =R.drawable.ic_arrow_right), contentDescription = "")
+                            }
+                        }
                     }
                 }
                 if (question.isExpanded.value){

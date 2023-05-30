@@ -97,6 +97,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.math.RoundingMode
 import java.text.DecimalFormat
+import kotlin.math.roundToInt
 
 @RequiresApi(Build.VERSION_CODES.S)
 @Composable
@@ -157,7 +158,7 @@ fun menu(model : HomeViewModel = viewModel(), onCloseDrawer:() -> Unit,navContro
         restartOnPlay = false
     )
 
-//    val distance = model.readDistance.observeAsState()
+    val distance = model.readDistance.observeAsState()
 //    val maxSpeed = model.readMaxSpeed.observeAsState()
 //    val alertCount = model.readAlertsCount.observeAsState()
     var rad = model.geofenceRadius.observeAsState()
@@ -407,7 +408,7 @@ Box(
                             color = Color.Black
                         )
                     }
-                    Spacer(modifier = Modifier.height(15.dp))
+                    Spacer(modifier = Modifier.height(5.dp))
                     Text(
                         text = "Trust Level: ${model.userInfo.value.userLevel ?: 0}",
                         fontWeight = FontWeight.Bold,
@@ -670,7 +671,7 @@ Box(
                                     contentDescription = "", tint = Color(0XFF57D654))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column() {
-                                    Text(text = "${df.format(model.userStatistics.value?.traveledDistance) } ", fontSize = 12.sp, fontWeight = FontWeight.Bold,color=Color.Black, letterSpacing = 0.sp)
+                                    Text(text = "${df.format(((distance.value?.times(10000.0))?.roundToInt() ?: 1).div(10000.0)) } ", fontSize = 12.sp, fontWeight = FontWeight.Bold,color=Color.Black, letterSpacing = 0.sp)
                                     Text(text = stringResource(R.string.lbl_appMenu_statistic_distance),letterSpacing = 0.sp, color = Color.Gray, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
                             }
@@ -690,20 +691,17 @@ Box(
                 Text(text = stringResource(id = R.string.lbl_appMenu_alertmeFrom), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 20.sp)
                 Spacer(modifier = Modifier.height(10.dp))
 
-                var enabledValue by remember { mutableStateOf(false) }
-                var values by remember { mutableStateOf(valuesList()) }
-                var steps by remember { mutableStateOf(0) }
-                var radd by remember { mutableStateOf(0f) }
+                val enabledValue by remember { mutableStateOf(false) }
+                val values by remember { mutableStateOf(valuesListt()) }
+                val steps by remember { mutableIntStateOf(0) }
+                var radd by remember { mutableFloatStateOf(0f) }
 
 
 
                 LaunchedEffect(Unit){
                     radd = rad.value!!.toFloat()
                 }
-                var valueRange: ClosedFloatingPointRange<Float>? by remember { mutableStateOf(null) }
-                val onValueChangeFinished by remember { mutableStateOf({
-
-                }) }
+                val valueRange: ClosedFloatingPointRange<Float>? by remember { mutableStateOf(null) }
                 val tutorialEnabled by remember { mutableStateOf(false) }
                 val interactionSource = remember {
                     MutableInteractionSource()
@@ -725,7 +723,7 @@ Box(
                         onValueChangeFinished = {
                             model.saveGeofenceRadius(radd.toInt())
                         },
-                        colors = sunriseSliderColorsDefault(),
+                        colors = sunriseSliderColorsDefaultt(),
                         isRtl = false
                     )
 
@@ -1181,9 +1179,9 @@ fun Modifier.innerShadow(
         frameworkPaint.maskFilter = null
     }
 }
-private fun valuesList() = listOf(200f, 300f, 400f, 500f, 600f, 700f, 800f)
+fun valuesListt() = listOf(200f, 300f, 400f, 500f, 600f, 700f, 800f)
 
-private fun sunriseSliderColorsDefault() = SunriseSliderColors(
+fun sunriseSliderColorsDefaultt() = SunriseSliderColors(
     thumbColor = Color(0xFF495CE8),
     thumbDisabledColor = Color(0xFF495CE8),
     inThumbColor = Color(0xFF495CE8),

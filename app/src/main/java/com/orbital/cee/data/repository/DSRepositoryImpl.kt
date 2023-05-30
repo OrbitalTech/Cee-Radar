@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.orbital.cee.core.AppSettingsSerializer
 import com.orbital.cee.core.Constants
 import com.orbital.cee.repository.Abstract
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -20,6 +21,7 @@ import javax.inject.Inject
 const val DATASTORE_NAME = "CEE_STORE"
 val Context.datastore : DataStore<Preferences> by preferencesDataStore(name = DATASTORE_NAME)
 
+
 class DSRepositoryImpl @Inject constructor(@ApplicationContext private val context: Context) : Abstract{
 
     companion object{
@@ -29,8 +31,10 @@ class DSRepositoryImpl @Inject constructor(@ApplicationContext private val conte
         val REPORT_COUNT_IN_THIS_HOUR = intPreferencesKey(Constants.REPORT_COUNTER_PER_ONE_HOUR)
         val SAVE_LAST_REPORT_TIME = longPreferencesKey(Constants.SAVE_LAST_REPORT)
         val DEBUG_MODE_PREF_KEY = booleanPreferencesKey(Constants.DEBUG_MODE_PREF_KEY)
-    }
 
+        val SCREEN_SLEEP_MODE_PREF_KEY = booleanPreferencesKey(Constants.SCREEN_SLEEP_MODE_PREF_KEY)
+        val SCREEN_SLEEP_TIMEOUT_PREF_KEY = intPreferencesKey(Constants.SCREEN_SLEEP_TIMEOUT_PREF_KEY)
+    }
     override suspend fun saveStatistics(uStatistics : UserStatistics) {
         context.datastore.edit { data ->
             data[ALERTED_COUNT] = uStatistics.alertedCount
@@ -53,6 +57,23 @@ class DSRepositoryImpl @Inject constructor(@ApplicationContext private val conte
         }
     }
 
+    override suspend fun saveAppSetting(isEnable: Boolean?,time : Int?) {
+        context.datastore.edit { data->
+            if (isEnable != null){
+                data[SCREEN_SLEEP_MODE_PREF_KEY] = isEnable
+            }
+            if (time != null){
+                data[SCREEN_SLEEP_TIMEOUT_PREF_KEY] = time
+            }
+        }
+    }
+
+    override suspend fun retrieveAppSetting()= context.datastore.data.map { log ->
+        AppSetting(
+            preventScreenSleep = log[SCREEN_SLEEP_MODE_PREF_KEY] ?: false,
+            screenSleepTimeOutInSecond = log[SCREEN_SLEEP_TIMEOUT_PREF_KEY] ?: 0
+        )
+    }
     override suspend fun retrieveDebugMode() = context.datastore.data.map { data->
         data[DEBUG_MODE_PREF_KEY] ?: false
     }
@@ -67,3 +88,4 @@ class DSRepositoryImpl @Inject constructor(@ApplicationContext private val conte
 
 data class UserStatistics(val alertedCount:Int, val traveledDistance : Float,val maxSpeed : Int)
 data class UserActivityLog(val lastReportTime:Long, val reportCountInThisHour : Int)
+data class AppSetting(val preventScreenSleep:Boolean, val screenSleepTimeOutInSecond : Int)

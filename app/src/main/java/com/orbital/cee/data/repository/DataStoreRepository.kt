@@ -2,11 +2,13 @@ package com.orbital.cee.data.repository
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.dataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.firebase.Timestamp
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.orbital.cee.core.AppSettingsSerializer
 import com.orbital.cee.core.Constants.GEOFENCE_RADIUS_M
 import com.orbital.cee.core.Constants.LANGUAGE_CODE
 import com.orbital.cee.core.Constants.PREFERENCE_ADS_WATCH_TIME
@@ -113,16 +115,16 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
             preference[PreferenceKey.lastAdsWatch] = alertCount.seconds
         }
     }
-    suspend fun addDistance(distance : Float) {
-        dataStore.edit { preference ->
-            preference[PreferenceKey.distance] =
-                if(preference[PreferenceKey.distance] == null){
-                    distance
-                }else{
-                    preference[PreferenceKey.distance]!! + distance
-                }
-        }
-    }
+//    suspend fun addDistance(distance : Float) {
+//        dataStore.edit { preference ->
+//            preference[PreferenceKey.distance] =
+//                if(preference[PreferenceKey.distance] == null){
+//                    distance
+//                }else{
+//                    preference[PreferenceKey.distance]!! + distance
+//                }
+//        }
+//    }
 
     suspend fun saveFirstLaunch(firstLaunch: Boolean) {
         dataStore.edit { preference ->
@@ -160,7 +162,6 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
             val firstLaunch = preference[PreferenceKey.firstLaunch] ?: true
             firstLaunch
         }
-
 
     val readMaxSpeed: Flow<Int> = dataStore.data
         .catch { exception ->

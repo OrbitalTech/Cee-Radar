@@ -419,4 +419,109 @@ Latest update: 1 apr 2023
     <string name="lbl_reach_permitted_quota_report_title">Limit exceeded</string>
 
 
+
+
+    <string name="q_and_a_help_q1">How can I get rid of the ADs?</string>
+    <string name="q_and_a_help_q2">How does the app know the location of the reports?</string>
+    <string name="q_and_a_help_q3">How do I get notified of reports?</string>
+    <string name="q_and_a_help_q4">How can I add a new report?</string>
+    <string name="q_and_a_help_q5">How can I remove a report I have posted?</string>
+    <string name="q_and_a_help_q6">Can other users see me when using the app?</string>
+    <string name="q_and_a_help_q7">Can I record and save my trips?</string>
+    <string name="q_and_a_help_q8">What can I do if I saw something inaccurate on the map?</string>
+    <string name="q_and_a_help_q9">What information does Cee collect?</string>
+    <string name="q_and_a_help_q10">Who can see my information?</string>
+    <string name="q_and_a_help_q11">Can I change the sound alerts of the reports?</string>
+    <string name="q_and_a_help_q12">Can I change the distance where I get alerts from?</string>
+    <string name="q_and_a_help_q13">What are different levels for?</string>
+    <string name="q_and_a_help_q14">How can I get level up?</string>
+    <string name="q_and_a_help_q15">What are points for?</string>
+    <string name="q_and_a_help_q16">How can I earn points?</string>
+    <string name="q_and_a_help_q17">How can I become a moderator?</string>
+    <string name="q_and_a_help_q18">What are the benefits of subscribing?</string>
+    <string name="q_and_a_help_q19">How can I invite my friends to use the app?</string>
+    <string name="q_and_a_help_q20">Who can add alerts?</string>
+
+    <string name="q_and_a_help_a1">You can subscribe to one of our premium packages and you will be ad free
+
+Or you can temporarily disable ads by watching a 30 second clip by clicking on the ~~AD~~ button on the home screen</string>
+    <string name="q_and_a_help_a2">The reports are placed by normal users and admins who are close to said report</string>
+    <string name="q_and_a_help_a3">When another user or an admin places a report it will show on the map, and when you get near it you will get an alert</string>
+    <string name="q_and_a_help_a4">You can add a new report by pressing the button with the plus icon, which gives you the option to add any report you want from four types of reports
+
+- How can I report a temporary camera?
+
+    You can report a temporary camera by clicking on the button with the plus icon and choosing the temporary camera option
+
+    Or you can directly report a temporary camera by clicking the button with the camera icon
+
+- How can I report road construction?
+
+    You can report road construction by clicking on the button with the plus icon and choosing the road construction option
+
+- How can I report a car crash?
+
+    You can report a car crash by clicking on the button with the plus icon and choosing the car crash option
+
+- How can I report a police checkpoint?
+
+    You can report a police checkpoint by clicking on the button with the plus icon and choosing the police checkpoint option</string>
+    <string name="q_and_a_help_a5">Press the report and you will be presented with an option to remove the report, press the remove report button and the report will be deleted</string>
+    <string name="q_and_a_help_a6">No, you are not visible to any other users </string>
+    <string name="q_and_a_help_a7">Yes, you can record and save your trips in the trip history page</string>
+    <string name="q_and_a_help_a8">Press the icon for the report and you will be presented with the option to like or dislike the selected report, if said report was correct you can like it, if not you can dislike it
+
+OR press the icon for the report and you will be presented with the option to submit a complaint  if many users report a complaint on a specific report it will be deleted</string>
+    <string name="q_and_a_help_a9">Cee only collects data that is necessary to run and improve the application, for more details go to the privacy policy section.</string>
+    <string name="q_and_a_help_a10">Your information and personal data are only visible to you, only the necessary information for the app will be visible to us, no information will be available to any third party person, for more details go to the privacy policy section.</string>
+    <string name="q_and_a_help_a11">Yes, you can change the alert sounds of specific report types to silent or vibration</string>
+    <string name="q_and_a_help_a12">Yes you can change alert distance from the settings menu, you have a range between 200m to 800m</string>
+    <string name="q_and_a_help_a13">You can upgrade levels to unlock more features on Cee</string>
+    <string name="q_and_a_help_a14">You can level up by collecting points</string>
+    <string name="q_and_a_help_a15">You can do multiple things with points:
+
+upgrade your Cee level
+
+Unlock more features on the app</string>
+    <string name="q_and_a_help_a16">You can earn points in various ways:
+
+Subscribe to one of the premium plans
+
+Invite a friend
+
+put multiple reports
+
+Get likes for the reports you have done
+
+Open the app every day and build up your streak</string>
+    <string name="q_and_a_help_a17">You can become a moderator by collecting points and leveling up until you become qualified, then you submit a request to become a moderator</string>
+    <string name="q_and_a_help_a18">ADs will be removed
+
+you can save unlimited trips
+
+you get more statistics for your driving
+
+Unlock different speedometer and arrow styles
+
+~~you can unlock the fuel consumption calculating feature~~</string>
+    <string name="q_and_a_help_a19">Press the invite button and you will be presented with a link
+
+You can copy the link and send it to anyone of your friends</string>
+    <string name="q_and_a_help_a20">Normal users can add these alerts
+
+Temporary camera
+
+Car crash
+
+Road construction
+
+Police checkpoint
+
+Users who are moderators can add or delete what normal users can plus these alerts
+
+Static camera
+
+Average speed cameras</string>
+
+
 </resources>

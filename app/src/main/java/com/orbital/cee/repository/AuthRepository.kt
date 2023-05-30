@@ -2,6 +2,7 @@ package com.orbital.cee.repository
 
 import com.google.android.gms.auth.api.identity.BeginSignInResult
 import com.google.firebase.auth.AuthCredential
+import com.orbital.cee.data.repository.AppSetting
 import com.orbital.cee.data.repository.UserActivityLog
 import com.orbital.cee.data.repository.UserStatistics
 import com.orbital.cee.model.Response
@@ -25,10 +26,10 @@ interface AuthRepository {
 }
 interface Abstract {
     suspend fun saveStatistics(uStatistics : UserStatistics)
-    
     suspend fun retrieveStatistics(): Flow<UserStatistics>
-
     suspend fun debugModeSave(isDebugMode : Boolean)
+    suspend fun saveAppSetting(isEnable: Boolean?,time : Int?)
+    suspend fun retrieveAppSetting(): Flow<AppSetting>
     suspend fun retrieveDebugMode(): Flow<Boolean>
     suspend fun retrieveUserActivityLog() : Flow<UserActivityLog>
 }

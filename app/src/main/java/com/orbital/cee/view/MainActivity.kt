@@ -9,6 +9,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -32,7 +33,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 25) {
             Shortcuts.setUp(applicationContext)
         }
-
+        installSplashScreen()
         setContent {
             val langCode = model.langCode.observeAsState()
             CEETheme(langCode = langCode.value?: "en"){

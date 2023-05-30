@@ -11,6 +11,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -27,6 +29,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -39,11 +43,13 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 import com.orbital.cee.R
+import com.orbital.cee.core.Constants.MAX_SPEED
 import com.orbital.cee.core.GeofenceBroadcastReceiver
 import com.orbital.cee.core.MyLocationService
 import com.orbital.cee.core.MyLocationService.LSS.TripAverageSpeed
 import com.orbital.cee.core.MyLocationService.LSS.TripDistance
 import com.orbital.cee.core.MyLocationService.LSS.TripMaxSpeed
+import com.orbital.cee.core.MyLocationService.LSS.speed
 import com.orbital.cee.model.NewReport
 import com.orbital.cee.model.Trip
 import com.orbital.cee.utils.MetricsUtils.Companion.bearingToCoordinate
@@ -95,15 +101,6 @@ fun Speed(
 //        model.lastLocation.value.distanceTo(thisIncLocation)
 //    }
 
-
-
-
-
-
-
-
-
-
     var isShowTripHistory by remember { mutableStateOf(false) }
     val df = DecimalFormat("#.##")
     df.roundingMode = RoundingMode.DOWN
@@ -115,10 +112,9 @@ fun Speed(
 //        }
 //    }
 
-
     Log.d("countDebug",model.tripDurationInSeconds.value.toString())
     val progressAnimationValue by animateFloatAsState(
-        targetValue = model.speedPercent.value,
+        targetValue = ((speed.value.toFloat() / MAX_SPEED.toFloat()) * 0.8).toFloat(),
         animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing)
     )
 //    val progressAnimationValueTwo by animateFloatAsState(
@@ -209,7 +205,8 @@ fun Speed(
             if(!isPurchasedAdRemove.value){
                 Box(modifier = Modifier
                     .fillMaxWidth()
-                    .background(color = Color.Transparent), contentAlignment = Alignment.Center) {
+                    .padding(top = 20.dp)
+                    .height(80.dp), contentAlignment = Alignment.Center) {
                     Box(modifier = Modifier
                         .background(
                             color = Color.Transparent,
@@ -233,16 +230,18 @@ fun Speed(
 
                 }
             }
-
-
             Column(modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 15.dp, end = 15.dp, top = 15.dp)
+                .fillMaxHeight()
+                .padding(start = 15.dp, end = 15.dp)
                 //.verticalScroll(rememberScrollState())
                 .background(color = MaterialTheme.colors.background)) {
 
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+//                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(50.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onClickBack) {
                         Icon(painter = painterResource(id = R.drawable.ic_arrow_back), tint = Color(0XFF848484),modifier = Modifier
                             .size(22.dp)
@@ -268,7 +267,8 @@ fun Speed(
                         Icon(painter = painterResource(id = R.drawable.ic_trip_history), tint = Color.Unspecified, contentDescription = "", modifier = Modifier.size(23.dp))
                     }
                 }
-                Column(modifier = Modifier.fillMaxHeight(0.95f),verticalArrangement = Arrangement.SpaceBetween) {
+                Column(modifier = Modifier
+                    .fillMaxHeight(),verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.CenterHorizontally) {
                     when (speedoMeterID) {
                         2 -> {
                             Box(modifier = Modifier
@@ -281,25 +281,27 @@ fun Speed(
                                 }, contentAlignment = Alignment.Center){
                                 speedometerUnknown_3(progressAnimationValue)
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(text = df.format(model.speed.value), fontWeight = FontWeight.Bold, fontSize = 42.sp, color = Color(0XFF495CE8))
+                                    Text(text = df.format(speed.value), fontWeight = FontWeight.Bold, fontSize = 42.sp, color = Color(0XFF495CE8))
                                     Text(text = "Km/h", color = Color(0XFF495CE8), fontSize = 25.sp)
                                 }
                             }
                         }
                         1 -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 10.dp)
-//                                    .pointerInput(Unit) {
-//                                        detectTapGestures(onTap = {
-//                                            speedoMeterID = 2
-//                                        })
-//                                    }
-                                , contentAlignment = Alignment.TopCenter
-                            ) {
-                                ceeOMeter(progressAnimationValue)
-                                SpeedDigit(currentLocation= model.lastLocation, speed = model.speed.value, nearestReport = model.allReports.firstOrNull())
+                            Box(modifier =
+                            Modifier
+                                .size((conf.screenWidthDp - 80).dp)
+                                .border(
+                                    width = 1.dp,
+                                    color = Color(0x14000000),
+                                    shape = CircleShape
+                                )){
+                                    Box(
+                                        Modifier
+                                            .padding(18.dp)
+                                    ) {
+                                        speedometerHITEX(value = 0.6f)
+                                        SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull(),hitex = true)
+                                    }
                             }
                         }
                         4 -> {
@@ -348,7 +350,7 @@ fun Speed(
 //                                    }
                                     Spacer(modifier = Modifier.height(70.dp))
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(df.format(model.speed.value), fontWeight = FontWeight.ExtraBold, fontSize = 35.sp,color = Color(0xFF495CE8))
+                                        Text(df.format(speed.value), fontWeight = FontWeight.ExtraBold, fontSize = 35.sp,color = Color(0xFF495CE8))
                                         Text("Km/h", fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
                                     }
 
@@ -368,7 +370,7 @@ fun Speed(
                                     })
                                 }, contentAlignment = Alignment.Center) {
                                 speedometerUnknown(progressAnimationValue)
-                                SpeedDigit(currentLocation= model.lastLocation, speed = model.speed.value, nearestReport = model.allReports.firstOrNull())
+                                SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull())
                             }
                         }
                         6 -> {
@@ -381,7 +383,7 @@ fun Speed(
                                     })
                                 }, contentAlignment = Alignment.Center) {
                                 speedometerUnknown_2(progressAnimationValue)
-                                SpeedDigit(currentLocation= model.lastLocation, speed = model.speed.value, nearestReport = model.allReports.firstOrNull())
+                                SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull())
 
                             }
                         }
@@ -396,7 +398,7 @@ fun Speed(
 //                                }
                                 ,contentAlignment = Alignment.Center) {
                                 speedometerUnknown_1(progressAnimationValue)
-                                SpeedDigit(currentLocation= model.lastLocation, speed = model.speed.value, nearestReport = model.allReports.firstOrNull())
+                                SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull())
 
                             }
                         }
@@ -423,7 +425,7 @@ fun Speed(
                                     Column(modifier = Modifier
                                         .fillMaxWidth()
                                         .fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                                        Text(text = df.format(model.speed.value), fontSize = 42.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                        Text(text = df.format(speed.value), fontSize = 42.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                         Text(text = "km/h",color = Color.White, fontSize = 25.sp)
                                     }
                                 }
@@ -621,7 +623,7 @@ fun Speed(
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(45.dp))
                     }
                 }
             }
@@ -672,7 +674,7 @@ fun Speed(
 
 }
 @Composable
-fun SpeedDigit(speed:Int,nearestReport:NewReport?,currentLocation:MutableState<Location>) {
+fun SpeedDigit(speed:Int,nearestReport:NewReport?,currentLocation:MutableState<Location>,hitex:Boolean = false) {
     val color = remember { mutableStateOf(Color.White) }
     val color1 = remember { mutableStateOf(Color.White) }
     val icon = remember { mutableStateOf(R.drawable.cee) }
@@ -729,41 +731,46 @@ fun SpeedDigit(speed:Int,nearestReport:NewReport?,currentLocation:MutableState<L
         reportListIsEmpty = true
     }
     Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(top = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        .fillMaxSize()
+        .padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(painter = painterResource(id = R.drawable.ic_triangle), contentDescription = "", tint = Color.Unspecified, modifier = Modifier.rotate(180f))
         Text(bearingToCoordinate(currentLocation.value.bearing), fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
         Spacer(modifier = Modifier.height(10.dp))
-        AnimatedVisibility(
-            modifier = Modifier.fillMaxWidth(),
-            visible = GeofenceBroadcastReceiver.GBRS.GeoId.value != null && !reportListIsEmpty,
-            enter =  fadeIn(),
-            exit = fadeOut()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(35.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+        Column(modifier = Modifier.height(36.dp)){
+            AnimatedVisibility(
+                modifier = Modifier.fillMaxWidth(),
+                visible = GeofenceBroadcastReceiver.GBRS.GeoId.value != null && !reportListIsEmpty,
+                enter =  fadeIn(),
+                exit = fadeOut()
             ) {
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(35.dp)
-                        .clip(shape = RoundedCornerShape(12.dp))
-                        .background(color = color1.value), contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .height(35.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(painter = painterResource(id = icon.value), modifier = Modifier.size(18.dp), tint = color.value, contentDescription = "")
-                }
-                Spacer(modifier = Modifier.width(5.dp))
-                Text(incidentDistance(nearestReportDistance), fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
+                    Box(
+                        modifier = Modifier
+                            .size(35.dp)
+                            .clip(shape = RoundedCornerShape(12.dp))
+                            .background(color = color1.value), contentAlignment = Alignment.Center
+                    ) {
+                        Icon(painter = painterResource(id = icon.value), modifier = Modifier.size(18.dp), tint = color.value, contentDescription = "")
+                    }
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(incidentDistance(nearestReportDistance), fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
 
+                }
             }
         }
-        Text(df.format(speed), fontWeight = FontWeight.ExtraBold, fontSize = 70.sp,color = Color(0xFF495CE8))
+        Text(df.format(speed), fontWeight = FontWeight.ExtraBold, fontSize = 75.sp,color = Color(0xFF495CE8), fontFamily = if (hitex){
+           FontFamily(Font(R.font.off_bit_trial_bold_t))
+        }else{null})
+//        Text("Km/h", fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
+        Spacer(modifier = Modifier.height(35.dp))
         Text("Km/h", fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
-        //Spacer(modifier = Modifier.height(20.dp))
-        //Text("40 km/h", fontWeight = FontWeight.Bold, fontSize = 14.sp,color = Color(0xFF495CE8))
+//        Text("40 km/h", fontWeight = FontWeight.Bold, fontSize = 14.sp,color = Color(0xFF495CE8))
     }
 }
 

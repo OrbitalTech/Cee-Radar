@@ -2,11 +2,14 @@
 <resources>
 
     <style name="Theme.CEE" parent="android:Theme.Material.Light.NoActionBar">
-<!--        <item name="android:windowTranslucentStatus">true</item>-->
         <item name="android:statusBarColor">@color/transparent</item>
-<!--        <item name="android:windowTranslucentStatus">true</item>-->
-<!--        <item name="android:statusBarColor">#0000FAFF</item>-->
         <item name="android:windowTranslucentNavigation">false</item>
-<!--        <item name="android:windowLightStatusBar">true</item>-->
+    </style>
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/cee_primary</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_cee_default_splash</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/cee_primary</item>
+        <item name="postSplashScreenTheme">@style/Theme.CEE</item>
+
     </style>
 </resources>

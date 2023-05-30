@@ -31,7 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.airbnb.lottie.compose.*
 import com.orbital.cee.R
+import com.orbital.cee.core.Constants
 import com.orbital.cee.core.GeofenceBroadcastReceiver
+import com.orbital.cee.core.MyLocationService.LSS.speed
 import com.orbital.cee.utils.Utils.pxToDp
 import com.orbital.cee.view.home.HomeViewModel
 import com.orbital.cee.view.trip.Speed
@@ -51,12 +53,12 @@ fun bottomBar(model:HomeViewModel,
     df.roundingMode = RoundingMode.DOWN
     val soundSta = model.soundStatus.observeAsState()
     val progressAnimationValue by animateFloatAsState(
-        targetValue = model.speedPercent.value,
+        targetValue = ((speed.value.toFloat() / Constants.MAX_SPEED.toFloat()) * 0.8).toFloat(),
         animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
     )
 
 //    Log.d("DEBUG_MODAL_BOTTOM_SHEET", "ScrHeight: ${conf.screenHeightDp}")
-    val composition = when (model.speed.value) {
+    val composition = when (speed.value) {
         in 0..29 -> { rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_speedface_0to30km)) }
         in 30..59 -> { rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_speedface_30to60km)) }
         in 60..79 -> { rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_speedface_60to80km)) }
@@ -186,8 +188,8 @@ fun bottomBar(model:HomeViewModel,
                             drawArc(
                                 brush = Brush.linearGradient(
                                     colors = listOf(
-                                        if(GeofenceBroadcastReceiver.GBRS.GeoId.value != null && speedLimit != 0 && model.speed.value > speedLimit ) Color(0xFFEA4E34) else Color(0xFF495CE8) ,
-                                        if(GeofenceBroadcastReceiver.GBRS.GeoId.value != null&& speedLimit != 0 && model.speed.value > speedLimit) Color(0xFFEA4E34) else Color(0xFF495CE8) ,
+                                        Color(0xFF495CE8) ,
+                                        Color(0xFF495CE8) ,
                                     )
                                 ),
                                 startAngle = 135f,
@@ -226,7 +228,7 @@ fun bottomBar(model:HomeViewModel,
                         modifier = Modifier.padding(start = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = df.format(model.speed.value), fontSize =  if(conf.screenWidthDp<350){25.sp}else{35.sp}, fontWeight = FontWeight.Bold)
+                        Text(text = df.format(speed.value), fontSize =  if(conf.screenWidthDp<350){25.sp}else{35.sp}, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.width(5.dp))
                         Text(text = "km/h")
                     }

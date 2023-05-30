@@ -25,7 +25,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -59,6 +58,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -80,19 +82,13 @@ import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.rewarded.RewardedAd
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.GeoPoint
-import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.LineString
 import com.mapbox.geojson.Point
-import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.CameraState
 import com.mapbox.maps.EdgeInsets
 import com.mapbox.maps.MapInitOptions
@@ -120,9 +116,10 @@ import com.mapbox.maps.plugin.compass.compass
 import com.mapbox.maps.plugin.gestures.addOnMapLongClickListener
 import com.mapbox.maps.plugin.scalebar.scalebar
 import com.orbital.cee.R
-import com.orbital.cee.core.Constants
 import com.orbital.cee.core.GeofenceBroadcastReceiver
 import com.orbital.cee.core.MyLocationService
+import com.orbital.cee.core.MyLocationService.LSS.isChangeDetected
+import com.orbital.cee.core.MyLocationService.LSS.lrouteCoordinates
 import com.orbital.cee.core.Permissions
 import com.orbital.cee.model.SingleCustomReport
 import com.orbital.cee.model.Trip
@@ -132,6 +129,7 @@ import com.orbital.cee.view.LocationNotAvailable.LocationNotAvailable
 import com.orbital.cee.view.home.HomeViewModel
 import com.orbital.cee.view.home.SaveUserInfoInAlerted
 import com.orbital.cee.view.home.UserInformation
+import com.orbital.cee.view.home.components.AddReportManuallyModal
 import com.orbital.cee.view.home.components.AppMenu
 import com.orbital.cee.view.home.components.DynamicModal
 import com.orbital.cee.view.home.components.FeedbackToast
@@ -153,9 +151,7 @@ import com.orbital.cee.view.home.components.startTripDialog
 import com.orbital.cee.view.home.components.topBar
 import com.orbital.cee.view.trip.Speed
 import com.orbital.cee.view.trip.advancedShadow
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import okhttp3.Call
 import okhttp3.Callback
@@ -165,91 +161,73 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
-import java.text.DecimalFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
 @SuppressLint("MissingPermission")
 @RequiresApi(Build.VERSION_CODES.S)
-@OptIn(ExperimentalMaterialApi::class, ExperimentalPagerApi::class,)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalPagerApi::class)
 @Composable
 fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
-//     lateinit var fusedLocationProviderClient: FusedLocationProviderClient
 
-//     lateinit var db : FirebaseFirestore
-//     lateinit var mAuth : FirebaseAuth
-//     lateinit var locationCallback: LocationCallback
-//     lateinit var locationRequest: LocationRequest
-     var lrouteCoordinates = ArrayList<Point>()
-     var layerIDD = "map_annotation"
-     var layerPinIDD = "map_pin"
-     var reportId = ""
-//     val df = DecimalFormat("#.##")
-     var showRegisterDialog = remember { mutableStateOf(false) }
-     var isShowMenu = remember { mutableStateOf(false) }
-    var showEditReportDialog = remember { mutableStateOf(false) }
-    var showAddReportManuallyDialog = remember { mutableStateOf(false) }
-    var showTripDialog = remember { mutableStateOf(false) }
+    val layerIDD = "map_annotation"
+    val layerPinIDD = "map_pin"
+    var reportId = ""
+    val showRegisterDialog = remember { mutableStateOf(false) }
+    val isShowMenu = remember { mutableStateOf(false) }
+    val showEditReportDialog = remember { mutableStateOf(false) }
+    val showAddReportManuallyDialog = remember { mutableStateOf(false) }
 
     var speedLimit :Int? = 0
      var reportIdEditing :String = ""
 
-     var reportType = remember { mutableStateOf(1) }
-     var alertCount = remember { mutableStateOf(0) }
-    var reportCount = remember { mutableStateOf(0) }
-     var timeLastReport = remember { mutableStateOf(0L) }
-     var distance = remember { mutableStateOf(0f) }
-     var maxSpeed = remember { mutableStateOf(0) }
-     var lLocation = Location("")
-    var isFromLogin = false
-    var isFirstLunch = false
-    var mRewardedAd : RewardedAd? = null
-//     var mInterstitialAd: InterstitialAd? = null
-    var isPurchasedAdRemove = remember { mutableStateOf(false) }
-    var isChangeDetected = remember { mutableStateOf(false) }
-    var deleteReportDialog = remember { mutableStateOf(false) }
-//    var count = remember { mutableStateOf(0) }
-    var navigationBarHeight = remember { mutableStateOf(0) }
-//    var stopCount = remember { mutableStateOf(0) }
-//    var isInAway = remember { mutableStateOf(true) }
-    var isInsideP2PZone = remember { mutableStateOf(false) }
-    var isInsideP2PRoad = remember { mutableStateOf(false) }
-    var bottomSheetContentId = remember { mutableStateOf(0) }
+     val reportType = remember { mutableIntStateOf(1) }
+     val alertCount = remember { mutableIntStateOf(0) }
+    val reportCount = remember { mutableIntStateOf(0) }
+     val timeLastReport = remember { mutableLongStateOf(0L) }
+     val lLocation = Location("")
 
-//    var langCode = remember { mutableStateOf("en") }
-    var username = remember { mutableStateOf("") }
-    var userAvatar =remember { mutableStateOf("") }
-    var timeRemainInt = remember { mutableStateOf(0f) }
-    var pointClickedOnMap = remember {mutableStateOf(GeoPoint(0.00,0.00))}
-//    var remoteConfig : FirebaseRemoteConfig? = null
+    val mRewardedAd : RewardedAd? = null
+    val isPurchasedAdRemove = remember { mutableStateOf(false) }
+    val deleteReportDialog = remember { mutableStateOf(false) }
+    val isInsideP2PZone = remember { mutableStateOf(false) }
+    val isInsideP2PRoad = remember { mutableStateOf(false) }
+    val bottomSheetContentId = remember { mutableIntStateOf(0) }
+
+    val username = remember { mutableStateOf("") }
+    val isNotificationResponse = remember { mutableStateOf(false) }
+    val responseMessage = remember { mutableStateOf("") }
+    val userAvatar =remember { mutableStateOf("") }
+    val timeRemainInt = remember { mutableFloatStateOf(0f) }
+    val pointClickedOnMap = remember {mutableStateOf(GeoPoint(0.00,0.00))}
     var firstPointId : String? = null
-    var showErrorModal = remember { mutableStateOf(false) }
-    var errorModalTitle = remember { mutableStateOf("") }
-    var errorModalDescription = remember { mutableStateOf<String?>(null) }
-//    var rad = 5
+    val showErrorModal = remember { mutableStateOf(false) }
+    val errorModalTitle = remember { mutableStateOf("") }
+    val errorModalDescription = remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val conf = LocalConfiguration.current
-    var bottomSheetState = rememberBottomSheetState(initialValue = BottomSheetValue.Collapsed, confirmStateChange = {
+    val bottomSheetState = rememberBottomSheetState(initialValue = BottomSheetValue.Collapsed, confirmStateChange = {
 //        Log.d("DEBUG_MODAL_BOTTOM_SHEET", "col: $it")
         if(it == BottomSheetValue.Collapsed){
             bottomSheetContentId.value = 0
         }
         true
     })
-//    Log.d("DEBUG_MODAL_BOTTOM_SHEET","prog: "+bottomSheetState.progress)
+    val traveledDistance = model.readDistance.observeAsState()
+    Log.d("DEBUG_MODAL_BOTTOM_SHEET","prog: "+model.navigationBarHeight.value)
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
     val alarm = remember { mutableStateOf(false) }
     val infiniteTransition = rememberInfiniteTransition()
     val configuration = LocalConfiguration.current
 
+
+
     model.loadTimeOfLastReport.observeAsState().value?.let {timeLastReport.value = it }
     model.reportCountPerOneHour.observeAsState().value?.let {reportCount.value = it }
-    //model.readAlertsCount.observeAsState().value?.let {alertCount.value = it }
-//    model.readDistance.observeAsState().value?.let {distance.value = it }
-//    model.readMaxSpeed.observeAsState().value?.let {maxSpeed.value = it }
-    var cameraState = remember {mutableStateOf<CameraState?>(null)}
+    val cameraState = remember {mutableStateOf<CameraState?>(null)}
     val lastWatchedAd = model.lsatAdsWatched.observeAsState()
     val userT = model.userType.observeAsState()
     val singleReport = remember { mutableStateOf(SingleCustomReport(isSuccess = false)) }
@@ -257,7 +235,13 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
         initialValue = ModalBottomSheetValue.Hidden,
         skipHalfExpanded = true,
         confirmValueChange = {
-            if(it == ModalBottomSheetValue.Hidden && model.whichButtonClicked.value == 4){
+            if(it == ModalBottomSheetValue.Hidden && (model.whichButtonClicked.value == 4 || model.whichButtonClicked.value == 7)){
+//                Log.d("DEBUG_APP_SETTING_DATA_STORE","hey")
+//                pointAnnotationOptions?.let {pointAnnotation->
+//                    Log.d("DEBUG_APP_SETTING_DATA_STORE","hey1")
+//                    pointAnnotation.iconSize = 0.75
+//                    model.pointAnnotationManager!!.update(pointAnnotation)
+//                }
                 cameraState.value?.let {
                     model.mapView.getMapboxMap().flyTo(cameraOptions {
                         center(it.center)
@@ -294,6 +278,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                             lineWidth(5.0)
                             lineColor("#495CE8")
                         })
+
                         // geofence circle
 //                          sty.addLayer(fillLayer(layerId = "circlee", sourceId = "reportss"){
 //                          fillColor("#495CE8")
@@ -310,6 +295,12 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                         model.annotationApi?.let {
                             model.pointAnnotationManager = it.createPointAnnotationManager(model.annotationConfig)
                             model.pointAnnotationManager!!.addClickListener(OnPointAnnotationClickListener { annotation : PointAnnotation ->
+//                                pointAnnotationOptions  = annotation
+//                                pointAnnotationOptions?.let{pointAnnotation->
+//                                    pointAnnotation.iconSize = 1.5
+//                                    model.pointAnnotationManager!!.update(pointAnnotation)
+//                                }
+
                                 cameraState.value = this.getMapboxMap().cameraState
                                 model.reportClicked.value = true
                                 val reportArray = annotation.getData()?.asJsonObject
@@ -322,7 +313,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                     model.onCameraTrackingDismissed()
                                     this.getMapboxMap().flyTo(cameraOptions {
                                             center(Point.fromLngLat(lon,lat))
-                                            zoom(14.5)
+                                            zoom(15.5)
                                             pitch(10.0)
                                             padding(EdgeInsets(0.0,0.0,590.0,0.0))
                                         },MapAnimationOptions.mapAnimationOptions { duration(500)}
@@ -345,6 +336,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
             }
             if (model.userType.value == 2){
                 getMapboxMap().addOnMapLongClickListener{point ->
+                    model.isPointClicked.value = true
                     pointClickedOnMap.value = GeoPoint(point.latitude(),point.longitude())
                     model.createClickedPin(point.latitude(),point.longitude())
                     Toast.makeText(context,"Please wait...", Toast.LENGTH_SHORT).show()
@@ -453,7 +445,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
 
 //    val sheetState = rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
     Box(modifier = Modifier.fillMaxSize()){
-        Log.d("DEBUG_DEBUG_MODE","Deb: "+model.isDebugMode.value)
+        Log.d("DEBUG_DEBUG_MODE","hey")
         ModalBottomSheetLayout(
             sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
             sheetContent =
@@ -490,7 +482,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                         )
                     }
                     2 -> {
-                        TabLayout(model.allReports.iterator()){
+                        TabLayout(model.allReports.iterator(),model= model,currentLocation = model.lastLocation.value){
                             model.onCameraTrackingDismissed()
                             model.mapView.getMapboxMap().flyTo(
                                 cameraOptions {
@@ -561,26 +553,68 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                             }
                         })
                     }
+                    7 -> {
+                        AddReportManuallyModal(onPositiveClick = { point, type, time, limit, address, isWithNotification ->
+                            model.addReport(
+                                geoPoint = point,
+                                reportType = type,
+                                time = time,
+                                speedLimit = limit,
+                                address = address
+                            )
+                            if (isWithNotification){
+                                val req = Request
+                                    .Builder()
+                                    .url("https://us-central1-cee-platform-87d21.cloudfunctions.net/sendNotificationForSpaceficLocation?latitude=${point.latitude}&longitude=${point.longitude}&radius=1&type=${type}")
+                                    .post("{}".toRequestBody("application/json".toMediaType()))
+                                    .build()
+
+                                val client = OkHttpClient.Builder().readTimeout(60, TimeUnit.SECONDS).build()
+                                client.newCall(req).enqueue(object : Callback {
+                                    override fun onFailure(call: Call, e: IOException) {
+                                        isNotificationResponse.value = true
+                                        responseMessage.value = "error the connection"
+                                    }
+                                    override fun onResponse(call: Call, response: Response) {
+                                        response.body?.string()?.let { responseBody->
+                                            isNotificationResponse.value = true
+                                            responseMessage.value = responseBody
+                                        }
+
+                                    }
+                                })
+                            }
+                            coroutineScope.launch {
+                                modalSheetState.hide()
+                            }
+                        }, clickedPoint = pointClickedOnMap.value)
+                    }
                 }
             },
             sheetState = modalSheetState,
             modifier = Modifier.fillMaxSize(),
             content = {
                 BottomSheetScaffold(
-                    sheetPeekHeight = (100 + navigationBarHeight.value).dp,
+                    sheetPeekHeight = (85 + model.navigationBarHeight.value).dp,
                     sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
                     sheetContent = {
                         when (bottomSheetContentId.value) {
                             1->{
                                 Speed(
-                                    model = model,onClickStart = {},
-                                    onClickFinish = {},
-                                    onClickContinue = {},
+                                    model = model,
+                                    onClickStart = { model.startTrip()},
+                                    onClickFinish = { coroutineScope.launch { model.saveTrip() } },
+                                    onClickContinue = {model.continueTrip()},
                                     onClickBack = {
                                         coroutineScope.launch {
+                                            bottomSheetContentId.value = 44
+                                            delay(10)
                                             bottomSheetState.collapse()
                                         }
-                                    },onClickResetTrip = {},onClickPause = {},isPurchasedAdRemove = isPurchasedAdRemove
+                                    },
+                                    onClickResetTrip = { model.tripReset() },
+                                    onClickPause = { model.pauseTrip() },
+                                    isPurchasedAdRemove = isPurchasedAdRemove
                                 )
                             }
                             else ->{
@@ -600,7 +634,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                         }
                                     },
                                     speedLimit = singleReport.value.reportSpeedLimit ?: 0,
-                                    navigationBarHeight = navigationBarHeight.value,bottomSheetState = bottomSheetState,
+                                    navigationBarHeight = model.navigationBarHeight.value,bottomSheetState = bottomSheetState,
                                     startTrip = {}, saveTrip = {}, continueTrip = {},
                                     pauseTrip = {}, tripReset = {}, isPurchasedAdRemove = isPurchasedAdRemove
                                 )
@@ -631,28 +665,22 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                         }
                         Scaffold(floatingActionButton = {
                             fab(model,
-                                navigationBarHeight = navigationBarHeight.value,
+                                navigationBarHeight = model.navigationBarHeight.value,
                                 onClickReport = {
                                     if (GeofenceBroadcastReceiver.GBRS.GeoId.value != null) {
                                     } else {
-                                        coroutineScope.launch(Dispatchers.IO) { model.retrieveStatistics() }
                                         if (MetricsUtils.isOnline(context)) {
-                                            if ((model.userStatistics.value?.traveledDistance ?: 0f) >= 15f || model.userType.value == 2) {
-                                                if (Permissions.hasBackgroundLocationPermission(
-                                                        context = context
-                                                    )
-                                                ) {
+                                            if ((traveledDistance.value ?: 0f) >= 15f || model.userType.value == 2) {
+                                                if (Permissions.hasBackgroundLocationPermission(context = context)) {
                                                     model.vibrate(context = context)
                                                     reportType.value = 1
                                                     if (model.userType.value == 2) {
                                                         model.whichButtonClicked.value = 6
                                                         coroutineScope.launch {
                                                             modalSheetState.show()
-
                                                         }
                                                     } else {
-                                                        model.showCustomDialogWithResult.value =
-                                                            true
+                                                        model.showCustomDialogWithResult.value = true
                                                     }
                                                 } else {
                                                     Toast.makeText(
@@ -720,7 +748,20 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                     }
                                 },
                                 onClickReportAddManually = {
-                                    showAddReportManuallyDialog.value = true
+                                    model.whichButtonClicked.value = 7
+                                    coroutineScope.launch {
+                                        modalSheetState.show()
+                                    }
+                                    cameraState.value = model.mapView.getMapboxMap().cameraState
+                                    model.onCameraTrackingDismissed()
+                                    model.mapView.getMapboxMap().flyTo(cameraOptions {
+                                        center(Point.fromLngLat(pointClickedOnMap.value.longitude,pointClickedOnMap.value.latitude))
+                                        zoom(15.5)
+                                        pitch(10.0)
+                                        padding(EdgeInsets(0.0,0.0,800.0,0.0))
+                                    },MapAnimationOptions.mapAnimationOptions { duration(500)}
+                                    )
+//                                    showAddReportManuallyDialog.value = true
                                 }
                             )
                         }) { padd ->
@@ -731,25 +772,29 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
 //                        .padding(bottom = if((padd.calculateBottomPadding() - 15.dp) >= 0.dp){padd.calculateBottomPadding() - 15.dp} else{0.dp} )
                                     .background(color = MaterialTheme.colors.background)
                             ) {
-                                if (model.allReports.size != 0 && model.pointAnnotationManager?.annotations?.size != model.allReports.size) {
-                                    Log.d(
-                                        "TESTANOSREPOS",
-                                        model.pointAnnotationManager?.annotations?.size.toString()
-                                    )
-                                    Log.d("TESTANOSREPOS", model.allReports.size.toString())
+//                                if (model.allReports.size != 0 && model.pointAnnotationManager?.annotations?.size != model.allReports.size) {
+//                                    Log.d(
+//                                        "TESTANOSREPOS",
+//                                        model.pointAnnotationManager?.annotations?.size.toString()
+//                                    )
+//                                    Log.d("TESTANOSREPOS", model.allReports.size.toString())
+//                                    model.createMarkerOnMap(model.allReports)
+//                                } else {
+//                                    if (model.allReports.size == 0) {
+//                                        LaunchedEffect(Unit) {
+//                                            model.getReportsAndAddGeofences()
+//                                        }
+//                                    }
+//                                }
+//                                Log.d("TESTANOSREPOS", model.allReports.size.toString())
+//                                Log.d(
+//                                    "TESTANOSREPOS",
+//                                    "Ano: " + model.pointAnnotationManager?.annotations?.size.toString()
+//                                )
+                                if(model.isChangeInZone1.value){
                                     model.createMarkerOnMap(model.allReports)
-                                } else {
-                                    if (model.allReports.size == 0) {
-                                        LaunchedEffect(Unit) {
-                                            model.getReportsAndAddGeofences()
-                                        }
-                                    }
+                                    model.isChangeInZone1.value = false
                                 }
-                                Log.d("TESTANOSREPOS", model.allReports.size.toString())
-                                Log.d(
-                                    "TESTANOSREPOS",
-                                    "Ano: " + model.pointAnnotationManager?.annotations?.size.toString()
-                                )
                                 Box(modifier = Modifier.fillMaxSize()) {
                                     AndroidView({ mapView!! })
                                     val lineString = LineString.fromLngLats(lrouteCoordinates)
@@ -761,7 +806,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                         model.createMarkerOnMap(model.allReports)
                                     }
 
-                                    if (isChangeDetected.value) {
+                                    if (isChangeDetected.value && model.isTripStarted.value) {
                                         model.mapView.getMapboxMap().getStyle {
                                             it.getSourceAs<GeoJsonSource>("line")
                                                 ?.featureCollection(
@@ -770,15 +815,24 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                         }
                                         isChangeDetected.value = false
                                     }
-                                    if (isChangeDetected.value) {
+                                    if(model.clearLine.value){
                                         model.mapView.getMapboxMap().getStyle {
                                             it.getSourceAs<GeoJsonSource>("line")
                                                 ?.featureCollection(
                                                     FeatureCollection.fromFeature(feature)
                                                 )
                                         }
-                                        isChangeDetected.value = false
+                                        model.clearLine.value = false
                                     }
+//                                    if (isChangeDetected.value) {
+//                                        model.mapView.getMapboxMap().getStyle {
+//                                            it.getSourceAs<GeoJsonSource>("line")
+//                                                ?.featureCollection(
+//                                                    FeatureCollection.fromFeature(feature)
+//                                                )
+//                                        }
+//                                        isChangeDetected.value = false
+//                                    }
                                     if (GeofenceBroadcastReceiver.GBRS.GeoId.value != null) {
                                         val corR by infiniteTransition.animateFloat(
                                             initialValue = 5.0F,
@@ -804,44 +858,61 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                                 )
                                         )
                                     }
-                                    if (model.isCameraMove.value && isInsideP2PRoad.value) {
+                                    if (model.isCameraMove.value && MyLocationService.LSS.isEnteredPointToPointRoad.value) {
+                                        if(MyLocationService.LSS.roadMaxSpeed.value < MyLocationService.LSS.inP2PAverageSpeed.value){
+                                            Button(
+                                                onClick = {},
+                                                colors = ButtonDefaults.buttonColors(
+                                                    backgroundColor =Color(0xFFEA4E34)
+                                                ),
+                                                border = BorderStroke(2.dp, Color.White),
+                                                modifier = Modifier
+                                                    .width(109.dp)
+                                                    .height(44.dp)
+                                                    .offset(
+                                                        (conf.screenWidthDp / 2).dp,
+                                                        ((conf.screenHeightDp / 2) - 58).dp
+                                                    ), shape =RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 8.dp)
+                                            ) {
+                                                Text(
+                                                    text = "You’re above speed limit.",
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.Medium,
+                                                    fontSize = 12.sp,
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+                                        }
                                         Button(
                                             onClick = {},
                                             contentPadding = PaddingValues(0.dp),
                                             colors = ButtonDefaults.buttonColors(
-                                                backgroundColor = if (isInsideP2PZone.value) {
-                                                    if (singleReport.value.reportSpeedLimit == null) {
-                                                        Color(0xFFEA4E34)
-                                                    } else {
-                                                        if (singleReport.value.reportSpeedLimit!! < MyLocationService.LSS.inP2PAverageSpeed.value) {
-                                                            Color(0xFFEA4E34)
-                                                        } else {
-                                                            Color(0xFF57D654)
-                                                        }
-                                                    }
+                                                backgroundColor = if (MyLocationService.LSS.roadMaxSpeed.value < MyLocationService.LSS.inP2PAverageSpeed.value) {
+                                                    Color(0xFFEA4E34)
                                                 } else {
-                                                    Color(0xFFFF9800)
+                                                    Color(0xFF57D654)
                                                 }
                                             ),
-                                            border = BorderStroke(1.5.dp, Color.White),
+                                            border = BorderStroke(2.dp, Color.White),
                                             modifier = Modifier
-                                                .width(40.dp)
-                                                .height(25.dp)
+                                                .width(48.dp)
+                                                .height(36.dp)
                                                 .offset(
                                                     (conf.screenWidthDp / 2).dp,
-                                                    (conf.screenHeightDp / 2).dp
-                                                ), shape = RoundedCornerShape(20.dp)
+                                                    ((conf.screenHeightDp / 2) - 10).dp
+                                                ), shape =if (singleReport.value.reportSpeedLimit!! < MyLocationService.LSS.inP2PAverageSpeed.value) { RoundedCornerShape(topStart = 8.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 18.dp)}else{
+                                                RoundedCornerShape(24.dp)
+                                                }
                                         ) {
                                             Text(
                                                 text = "${MyLocationService.LSS.inP2PAverageSpeed.value}",
                                                 color = Color.White,
-                                                fontSize = 10.sp
+                                                fontSize = 12.sp
                                             )
                                         }
                                     }
                                     if (model.reportClicked.value) {
                                         LaunchedEffect(Unit) {
-
                                             coroutineScope.launch {
                                                 modalSheetState.show()
                                             }
@@ -866,7 +937,39 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                    IconButton(onClick = {},
+                                                    IconButton(onClick = {
+                                                        model.vibrate(context = context)
+                                                        if (!model.isTripStarted.value) {
+                                                            model.showTripDialog.value = true
+                                                        } else {
+                                                            model.isTripStarted.value = false
+                                                            model.trip.value.endTime = Date()
+                                                            model.trip.value.distance =
+                                                                MyLocationService.LSS.TripDistance.value
+                                                            model.trip.value.startTime =
+                                                                MyLocationService.LSS.TripStartTime
+                                                            model.trip.value.maxSpeed =
+                                                                MyLocationService.LSS.TripMaxSpeed.value
+                                                            model.trip.value.speedAverage =
+                                                                MyLocationService.LSS.TripAverageSpeed.value
+                                                            model.trip.value.listOfLatLon.addAll(
+                                                                lrouteCoordinates
+                                                            ).let { ite ->
+                                                                if (ite) {
+                                                                    trips?.add(model.trip.value)
+                                                                        ?.let { itt ->
+                                                                            if (itt) {
+                                                                                model.saveTrip(
+                                                                                    trips
+                                                                                )
+                                                                                MyLocationService.LSS.resetTrip()
+                                                                                lrouteCoordinates.clear()
+                                                                            }
+                                                                        }
+                                                                }
+                                                            }
+                                                        }
+                                                    },
                                                         modifier = Modifier.advancedShadow(
                                                             color = Color(0xFF495CE8),
                                                             alpha = 0.06f,
@@ -887,37 +990,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
 //                                                    Button(
 //                                                        contentPadding = PaddingValues(0.dp),
 //                                                        onClick = {
-//                                                            model.vibrate(context = context)
-//                                                            if (!model.isTripStarted.value) {
-//                                                                showTripDialog.value = true
-//                                                            } else {
-//                                                                model.isTripStarted.value = false
-//                                                                model.trip.value.endTime = Date()
-//                                                                model.trip.value.distance =
-//                                                                    MyLocationService.LSS.TripDistance.value
-//                                                                model.trip.value.startTime =
-//                                                                    MyLocationService.LSS.TripStartTime
-//                                                                model.trip.value.maxSpeed =
-//                                                                    MyLocationService.LSS.TripMaxSpeed.value
-//                                                                model.trip.value.speedAverage =
-//                                                                    MyLocationService.LSS.TripAverageSpeed.value
-//                                                                model.trip.value.listOfLatLon.addAll(
-//                                                                    lrouteCoordinates
-//                                                                ).let { ite ->
-//                                                                    if (ite) {
-//                                                                        trips?.add(model.trip.value)
-//                                                                            ?.let { itt ->
-//                                                                                if (itt) {
-//                                                                                    model.saveTrip(
-//                                                                                        trips
-//                                                                                    )
-//                                                                                    MyLocationService.LSS.resetTrip()
-//                                                                                    lrouteCoordinates.clear()
-//                                                                                }
-//                                                                            }
-//                                                                    }
-//                                                                }
-//                                                            }
+//
 //                                                        },
 //
 //                                                        colors = ButtonDefaults.buttonColors(
@@ -1010,7 +1083,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                                     }
                                                     Spacer(
                                                         modifier = Modifier.height(
-                                                            (navigationBarHeight.value + 110).dp
+                                                            (model.navigationBarHeight.value + 95).dp
                                                         )
                                                     )
                                                 }
@@ -1183,6 +1256,18 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                             positiveButtonModifier = Modifier.fillMaxWidth(0.49f),
                                         )
                                     }
+                                    if (isNotificationResponse.value) {
+                                        DynamicModal(
+                                            title = responseMessage.value,
+                                            icon = R.drawable.ic_cee_two,
+                                            positiveButtonAction = {
+                                                isNotificationResponse.value = false
+                                            },
+                                            negativeButtonAction = {},
+                                            positiveButtonText = stringResource(id = R.string.btn_auth_alert_ok),
+                                            positiveButtonModifier = Modifier.fillMaxWidth(0.49f),
+                                        )
+                                    }
                                     if (deleteReportDialog.value) {
                                         DynamicModal(
                                             title = "Delete report",
@@ -1268,21 +1353,15 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
 
                                             )
                                     }
-                                    if (showTripDialog.value) {
+                                    if (model.showTripDialog.value) {
                                         startTripDialog(
                                             onClickStart = {
-                                                model.isTripStarted.value = true
-                                                MyLocationService.LSS.resetTrip()
-                                                lrouteCoordinates.clear()
-                                                showTripDialog.value = false
+                                                model.startTrip()
                                             },
                                             onClickContinue = {
-//                                            routeCoordinates.addAll(LocationService.LSS.TripRoutePoints)
-                                                model.isTripStarted.value = true
-                                                showTripDialog.value = false
-//                                            tempRouteCoordinates.clear()
+                                                model.continueTrip()
                                             }, onDismiss = {
-                                                showTripDialog.value = false
+                                                model.showTripDialog.value = false
                                             })
                                     }
                                     if (showRegisterDialog.value) {
@@ -1340,7 +1419,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                             onDismiss = {
                                                 showAddReportManuallyDialog.value = false
                                             },
-                                            onPositiveClick = { point, type, time, limit, address ->
+                                            onPositiveClick = { point, type, time, limit, address,isWithNoti ->
                                                 model.addReport(
                                                     geoPoint = point,
                                                     reportType = type,
@@ -1364,7 +1443,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                                     startValue(7.0)
                                                 }
                                             ) {
-                                                startDelay = 1500
+                                                startDelay = 1000
                                                 duration = 2000
                                                 interpolator =
                                                     AccelerateDecelerateInterpolator()
@@ -1427,7 +1506,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                     }
                                 }
                                 MyLocationService.GlobalStreetSpeed.streetSpeedLimit.value?.let {
-                                    var offsetY by remember { mutableStateOf(450f) }
+                                    var offsetY by remember { mutableStateOf(650f) }
                                     Button(
                                         onClick = {},
                                         contentPadding = PaddingValues(0.dp),
@@ -1515,3 +1594,22 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
         }
     }
 }
+
+//fun sendNotification(point: GeoPoint, type: Int) {
+//    val req = Request
+//        .Builder()
+//        .url("https://us-central1-cee-platform-87d21.cloudfunctions.net/sendNotificationForSpaceficLocation?latitude=${point.latitude}&longitude=${point.longitude}&radius=1&type=${type}")
+//        .post("{}".toRequestBody("application/json".toMediaType()))
+//        .build()
+//
+//    val client = OkHttpClient()
+//    client.newCall(req).enqueue(object : Callback {
+//            override fun onFailure(call: Call, e: IOException) {
+//                is
+//            }
+//
+//            override fun onResponse(call: Call, response: Response) {
+//
+//            }
+//        })
+//}

@@ -15,6 +15,7 @@ import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.provider.Settings
@@ -24,6 +25,7 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.runtime.*
 import androidx.core.app.ActivityCompat
+import androidx.datastore.dataStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -70,12 +72,19 @@ import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorBearingChangedListener
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener
 import com.mapbox.maps.plugin.locationcomponent.location
+import com.orbital.cee.core.AppSettingsSerializer
 import com.orbital.cee.core.Constants
+import com.orbital.cee.core.Constants.DB_REF_ARCHIVE_REPORT
 import com.orbital.cee.core.Constants.DB_REF_REPORT
 import com.orbital.cee.core.Constants.DB_REF_REPORT_DEBUG
 import com.orbital.cee.core.Constants.DB_REF_USER
 import com.orbital.cee.core.GeofenceBroadcastReceiver
+import com.orbital.cee.core.MyLocationService
+import com.orbital.cee.core.MyLocationService.LSS.lrouteCoordinates
+import com.orbital.cee.core.MyLocationService.LSS.resetTrip
+import com.orbital.cee.core.MyLocationService.LSS.speed
 import com.orbital.cee.data.Event
+import com.orbital.cee.data.repository.AppSetting
 import com.orbital.cee.data.repository.DSRepositoryImpl
 import com.orbital.cee.data.repository.DataStoreRepository
 import com.orbital.cee.data.repository.UserStatistics
@@ -84,10 +93,12 @@ import com.orbital.cee.utils.MetricsUtils
 import com.orbital.cee.utils.Utils
 import com.orbital.cee.view.MainActivity
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.mutate
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
 import java.math.RoundingMode
@@ -97,6 +108,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 import kotlin.collections.ArrayList
+
+
 @HiltViewModel
 @RequiresApi(Build.VERSION_CODES.S)
 class HomeViewModel @Inject  constructor(
@@ -124,32 +137,35 @@ class HomeViewModel @Inject  constructor(
     var userInfo = mutableStateOf(UserNew())
     var trip = mutableStateOf(Trip())
     var isCameraMove = mutableStateOf(true)
+    var clearLine = mutableStateOf(true)
     var showCustomDialogWithResult = mutableStateOf(false)
     var geofencingClient : GeofencingClient = LocationServices.getGeofencingClient(app)
 
     var userStatistics : MutableLiveData<UserStatistics> = MutableLiveData(UserStatistics(0,0f,0))
-
+    var navigationBarHeight = mutableStateOf(0)
     var isReachedQuotaDialog = mutableStateOf(false)
     var isDebugMode :MutableLiveData<Boolean> = MutableLiveData(false)
+    var appSetting :MutableLiveData<AppSetting> = MutableLiveData(AppSetting(false,10))
 
     var isDeleteReportRequested =  mutableStateOf(false)
     var lastLocation = mutableStateOf(Location(""))
     var isTripStarted = mutableStateOf(false)
     var isDarkMode = mutableStateOf(false)
+    var isPointClicked = mutableStateOf(false)
 //    var isPurchasedAdRemove = mutableStateOf(false)
     var reportClicked = mutableStateOf(false)
     var isShowDots = mutableStateOf(false)
     var isCameraZoomChanged = mutableStateOf(false)
-    val speed = mutableStateOf(0)
+
     val onlineUserCounter = mutableStateOf(0)
-    val speedPercent = mutableStateOf(0.0f)
+//    val speedPercent = mutableStateOf(0.0f)
     var whichButtonClicked = mutableStateOf(0)
     val slider = mutableStateOf(false)
     val inSideReportToast = mutableStateOf(false)
     val inSideReport = mutableStateOf(false)
     val isDarkModeEnabled = mutableStateOf(false)
     var reportId = mutableStateOf("")
-    val myReports = mutableListOf<NewReport>()
+    val myReports = mutableListOf<SingleCustomReport>()
     var temperature = mutableStateOf<Int?>(null)
     var tripDurationInSeconds = mutableStateOf<Int?>(0)
     private val responseMessage = mutableStateOf<Event<String>?>(null)
@@ -164,6 +180,8 @@ class HomeViewModel @Inject  constructor(
     var pointAnnotationManagerr : PointAnnotationManager? = null
     lateinit var annotationConfig : AnnotationConfig
     lateinit var annotationConfigg : AnnotationConfig
+
+    val isChangeInZone1 = mutableStateOf(false)
 
     private val tempReports1 = mutableListOf<NewReport>()
     private val tempGeofence1 = mutableListOf<Geofence>()
@@ -198,8 +216,9 @@ class HomeViewModel @Inject  constructor(
 
 
     private val onIndicatorBearingChangedListener = OnIndicatorBearingChangedListener {
-        mapView.getMapboxMap().setCamera(CameraOptions.Builder().bearing(it).build())
-
+        if (speed.value > 5){
+            mapView.getMapboxMap().setCamera(CameraOptions.Builder().bearing(it).build())
+        }
     }
     private val onIndicatorPositionChangedListener = OnIndicatorPositionChangedListener {
         mapView.getMapboxMap().setCamera(CameraOptions.Builder().center(it).build())
@@ -218,6 +237,7 @@ class HomeViewModel @Inject  constructor(
     }
     init {
         retrieveIsDebugMode()
+        retrieveIsPreventScreenSleep()
     }
     fun saveStatistics(alertedCount:Int, traveledDistance : Float, _maxSpeed: Int){
         viewModelScope.launch(Dispatchers.IO) {
@@ -283,7 +303,8 @@ class HomeViewModel @Inject  constructor(
                   reportType:Int,
                   time: Timestamp = Timestamp.now(),
                   speedLimit:Int? = null,
-                  address : String? = null
+                  address : String? = null,
+                  bearing : Float = -1f
     ) = viewModelScope.launch {
         try {
             auth.currentUser?.let {
@@ -307,6 +328,11 @@ class HomeViewModel @Inject  constructor(
                 report["reportId"] = id
                 if (speedLimit!=null){
                     report["reportSpeedLimit"] = speedLimit
+                }
+                if (bearing == 0f){
+                    report["reportDirection"] = -1
+                }else{
+                    report["reportDirection"] = bearing
                 }
                 report["reportByUID"] = it.uid
                 document.set(report).await()
@@ -340,8 +366,8 @@ class HomeViewModel @Inject  constructor(
             }
         }
     }
-    fun deleteReport(bookId: String) = viewModelScope.launch {
-        db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(bookId).delete().await()
+    fun deleteReport(reportId: String) = viewModelScope.launch {
+        db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(reportId).delete().await()
     }
     fun saveFirstLaunch(firstLaunch: Boolean) =
         viewModelScope.launch(Dispatchers.IO) {
@@ -376,10 +402,10 @@ class HomeViewModel @Inject  constructor(
         viewModelScope.launch(Dispatchers.IO) {
             dataStoreRepository.saveGeoFenceRadius(radius)
         }
-    fun addDistance(distanceKM: Float) =
-        viewModelScope.launch(Dispatchers.IO) {
-            dataStoreRepository.addDistance(distanceKM)
-        }
+//    fun addDistance(distanceKM: Float) =
+//        viewModelScope.launch(Dispatchers.IO) {
+//            dataStoreRepository.addDistance(distanceKM)
+//        }
     fun updateSoundStatus(soundStatusId: Int) =
         viewModelScope.launch(Dispatchers.IO) {
             dataStoreRepository.updateSoundPreferences(soundStatusId)
@@ -397,7 +423,7 @@ class HomeViewModel @Inject  constructor(
             return -1
         }catch (e:Exception){
             Log.d("PrintGetMyReportCount_Error",e.message.toString())
-            return 66
+            return 0
         }
     }
 
@@ -478,11 +504,11 @@ class HomeViewModel @Inject  constructor(
             }else{
             markerList = ArrayList()
             pointAnnotationManager?.deleteAll()
-            pointAnnotationManager?.addClickListener(OnPointAnnotationClickListener {
-                    annotation : PointAnnotation ->
-                onClickReport(annotation)
-                true
-            })
+//            pointAnnotationManager?.addClickListener(OnPointAnnotationClickListener {
+//                    annotation : PointAnnotation ->
+//                onClickReport(annotation)
+//                true
+//            })
             for (i in repo){
                 val bitmap = when(i.reportType){
 
@@ -617,6 +643,105 @@ class HomeViewModel @Inject  constructor(
 
         }
     }
+    lateinit var handler: Handler
+    private var seconds = 0
+    private var pauseOffset: Int = 0
+    var showTripDialog =  mutableStateOf(false)
+//    var lrouteCoordinates = ArrayList<Point>()
+     fun startTimer() {
+        handler.post(object : Runnable {
+            override fun run() {
+                seconds++
+                handler.postDelayed(this, 1000)
+                timeRemain.value = seconds
+                Log.d("TIMER_COUNT",seconds.toString())
+            }
+        })
+
+        isTimerRunning.value = true
+    }
+     fun pauseTimer() {
+        handler.removeCallbacksAndMessages(null)
+        pauseOffset = seconds
+        isTimerRunning.value = false
+    }
+     fun resetTimer() {
+        if (isTimerRunning.value) {
+            pauseTimer()
+        }
+        seconds = 0
+        pauseOffset = 0
+        timeRemain.value = seconds
+    }
+
+
+     fun continueTrip() {
+        isTripStarted.value = true
+        showTripDialog.value = false
+    }
+
+     fun tripReset() {
+        resetTimer()
+        isTripStarted.value = false
+         clearLine.value = true
+        resetTrip()
+    }
+
+     fun pauseTrip() {
+        if (isTimerRunning.value){
+            pauseTimer()
+        }else{
+            startTimer()
+        }
+        MyLocationService.LSS.isTripPused.value = !MyLocationService.LSS.isTripPused.value
+    }
+
+     fun startTrip() {
+        if (!isTimerRunning.value){
+            startTimer()
+        }else{
+            resetTimer()
+            startTimer()
+        }
+        isTripStarted.value = true
+        resetTrip()
+        lrouteCoordinates.clear()
+        showTripDialog.value = false
+    }
+
+    var tripSize = -1
+     suspend fun saveTrip() {
+         Log.d("DEBUG_TRIP_RETR_SIZE", "hi")
+        isTripStarted.value = false
+        trip.value.endTime = Date()
+        trip.value.distance = MyLocationService.LSS.TripDistance.value
+        trip.value.maxSpeed = MyLocationService.LSS.TripMaxSpeed.value
+        trip.value.startTime = MyLocationService.LSS.TripStartTime
+        trip.value.speedAverage = MyLocationService.LSS.TripAverageSpeed.value
+        trip.value.listOfLatLon.addAll(lrouteCoordinates)
+         dataStoreRepository.tripList.collect{trips->
+             Log.d("DEBUG_TRIP_RETR_SIZE", trips.size.toString())
+             if (tripSize+1 != trips.size){
+                 tripSize = trips.size
+
+                 val templ = ArrayList<Trip?>()
+                 templ.addAll(trips)
+                 templ.add(trip.value).let {
+                     saveTrip(templ)
+                     lrouteCoordinates.clear()
+                     resetTrip()
+                     resetTimer()
+                 }
+             }
+
+         }
+
+    }
+
+
+
+
+
     private fun createDotMarkerOnMap(repo : List<NewReport>){
         try {
             markerList = ArrayList()
@@ -893,54 +1018,58 @@ class HomeViewModel @Inject  constructor(
             val center =  GeoLocation(latt, lonn)
             val radiusInM = radius * 1000.0
             val bounds = GeoFireUtils.getGeoHashQueryBounds(center, radiusInM)
-            val tasks = arrayListOf<Task<QuerySnapshot>>()
+//            val tasks = arrayListOf<Task<QuerySnapshot>>()
             geofencingClient.removeGeofences(geofencePendingIntent)
             Log.d("BOUNDSSIZE",bounds.size.toString())
-
+            val source = Source.CACHE
             for ((i, b) in bounds.withIndex()) {
                 val q = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG })
                     .orderBy("g")
                     .startAt(b.startHash)
                     .endAt(b.endHash)
-                tasks.add(q.get());
+//                tasks.add(q.get(source));
                 when (i){
                     0->{
                         snap1?.remove()
                         snap1 = q.addSnapshotListener{ _, _ ->
+                            Log.d("TESTGEOQURY_IMPO", "g: 1")
                             tempReports1.clear()
                             tempGeofence1.clear()
                             scope.launch {
-                                dataToList(q.get(),i,latt,lonn,bounds.size)
+                                dataToList(q.get(source),i,latt,lonn,bounds.size)
                             }
                         }
                     }
                     1->{
                         snap2?.remove()
                         snap2 = q.addSnapshotListener{ _, _ ->
+                            Log.d("TESTGEOQURY_IMPO", "g: 1")
                             tempReports2.clear()
                             tempGeofence2.clear()
                             scope.launch {
-                                dataToList(q.get(),i,latt,lonn,bounds.size)
+                                dataToList(q.get(source),i,latt,lonn,bounds.size)
                             }
                         }
                     }
                     2->{
                         snap3?.remove()
                         snap3 = q.addSnapshotListener{ _, _ ->
+                            Log.d("TESTGEOQURY_IMPO", "g: 1")
                             tempReports3.clear()
                             tempGeofence3.clear()
                             scope.launch {
-                                dataToList(q.get(),i,latt,lonn,bounds.size)
+                                dataToList(q.get(source),i,latt,lonn,bounds.size)
                             }
                         }
                     }
                     3->{
                         snap4?.remove()
                         snap4 = q.addSnapshotListener{ _, _ ->
+                            Log.d("TESTGEOQURY_IMPO", "g: 1")
                             tempReports4.clear()
                             tempGeofence4.clear()
                             scope.launch {
-                                dataToList(q.get(),i,latt,lonn,bounds.size)
+                                dataToList(q.get(source),i,latt,lonn,bounds.size)
                             }
                         }
                     }
@@ -955,22 +1084,22 @@ class HomeViewModel @Inject  constructor(
             val radius = 25
             val center =  GeoLocation(latitude, longitude)
             val radiusInM = radius * 1000.0
-            task.await().documents.forEach { document->
-                val geoLocation = document.get("geoLocation") as? List<*>?
-                Log.d("ERROR-11232",document.id)
-                if (geoLocation != null) {
-                    val lat = geoLocation[0] as Double
-                    val lng = geoLocation[1] as Double
-                    val docLocation = GeoLocation(lat, lng)
-                    val distanceInM = GeoFireUtils.getDistanceBetween(docLocation, center)
-                    if (distanceInM <= radiusInM) {
-                        val report = document.toObject(NewReport::class.java)
-                        Log.d("ERROR-11232",document.get("reportId") as String)
-                        report?.let { repo ->
-                            when(i){
-                                0->{
+
+            when(i){
+                0->{
+                    Log.d("TESTGEOQURY_IMPO", "F: 1")
+                    task.await().documents.forEach { document->
+                        val geoLocation = document.get("geoLocation") as? List<*>?
+                        Log.d("ERROR-11232",document.id)
+                        if (geoLocation != null) {
+                            val lat = geoLocation[0] as Double
+                            val lng = geoLocation[1] as Double
+                            val docLocation = GeoLocation(lat, lng)
+                            val distanceInM = GeoFireUtils.getDistanceBetween(docLocation, center)
+                            if (distanceInM <= radiusInM) {
+                                val report = document.toObject(NewReport::class.java)
+                                report?.let { repo ->
                                     tempReports1.add(repo)
-                                    createMarkerOnMap(tempReports3)
                                     if (report.reportType != 405 && report.reportType != 7) {
                                         tempGeofence1.add(
                                             Geofence.Builder()
@@ -986,11 +1115,26 @@ class HomeViewModel @Inject  constructor(
                                                 .build()
                                         )
                                     }
-                                    //break
                                 }
-                                1->{
+                            }
+                        }
+                    }
+                    isChangeInZone1.value = true
+                }
+                1->{
+                    Log.d("TESTGEOQURY_IMPO", "F: 2")
+                    task.await().documents.forEach { document->
+                        val geoLocation = document.get("geoLocation") as? List<*>?
+                        Log.d("ERROR-11232",document.id)
+                        if (geoLocation != null) {
+                            val lat = geoLocation[0] as Double
+                            val lng = geoLocation[1] as Double
+                            val docLocation = GeoLocation(lat, lng)
+                            val distanceInM = GeoFireUtils.getDistanceBetween(docLocation, center)
+                            if (distanceInM <= radiusInM) {
+                                val report = document.toObject(NewReport::class.java)
+                                report?.let { repo ->
                                     tempReports2.add(repo)
-                                    createMarkerOnMap(tempReports3)
                                     if (report.reportType != 405 && report.reportType != 7) {
                                         tempGeofence2.add(
                                             Geofence.Builder()
@@ -999,16 +1143,32 @@ class HomeViewModel @Inject  constructor(
                                                 .setCircularRegion(
                                                     report.geoLocation?.get(0) as Double,
                                                     report.geoLocation?.get(1) as Double,
-                                                   geofenceRadius.value?.toFloat() ?: 250f
+                                                    geofenceRadius.value?.toFloat() ?: 250f
                                                 )
                                                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
                                                 .build()
                                         )
                                     }
                                 }
-                                2->{
+                            }
+                        }
+                    }
+                    isChangeInZone1.value = true
+                }
+                2->{
+                    Log.d("TESTGEOQURY_IMPO", "F: 3")
+                    task.await().documents.forEach { document->
+                        val geoLocation = document.get("geoLocation") as? List<*>?
+                        Log.d("ERROR-11232",document.id)
+                        if (geoLocation != null) {
+                            val lat = geoLocation[0] as Double
+                            val lng = geoLocation[1] as Double
+                            val docLocation = GeoLocation(lat, lng)
+                            val distanceInM = GeoFireUtils.getDistanceBetween(docLocation, center)
+                            if (distanceInM <= radiusInM) {
+                                val report = document.toObject(NewReport::class.java)
+                                report?.let { repo ->
                                     tempReports3.add(repo)
-                                    createMarkerOnMap(tempReports3)
                                     if (report.reportType != 405 && report.reportType != 7) {
                                         tempGeofence3.add(
                                             Geofence.Builder()
@@ -1024,9 +1184,25 @@ class HomeViewModel @Inject  constructor(
                                         )
                                     }
                                 }
-                                3->{
+                            }
+                        }
+                    }
+                    isChangeInZone1.value = true
+                }
+                3->{
+                    Log.d("TESTGEOQURY_IMPO", "F: 4")
+                    task.await().documents.forEach { document->
+                        val geoLocation = document.get("geoLocation") as? List<*>?
+                        Log.d("ERROR-11232",document.id)
+                        if (geoLocation != null) {
+                            val lat = geoLocation[0] as Double
+                            val lng = geoLocation[1] as Double
+                            val docLocation = GeoLocation(lat, lng)
+                            val distanceInM = GeoFireUtils.getDistanceBetween(docLocation, center)
+                            if (distanceInM <= radiusInM) {
+                                val report = document.toObject(NewReport::class.java)
+                                report?.let { repo ->
                                     tempReports4.add(repo)
-                                    createMarkerOnMap(tempReports3)
                                     if (report.reportType != 405 && report.reportType != 7) {
                                         tempGeofence4.add(
                                             Geofence.Builder()
@@ -1045,6 +1221,7 @@ class HomeViewModel @Inject  constructor(
                             }
                         }
                     }
+                    isChangeInZone1.value = true
                 }
             }
             Log.d("TESTGEOQURY_IMPO", "B: $size  |  $counter")
@@ -1052,8 +1229,9 @@ class HomeViewModel @Inject  constructor(
                 allReports.clear()
                 addGeofences(concatenate(tempGeofence1, tempGeofence2, tempGeofence3,tempGeofence4))
                 allReports.addAll(concatenate(tempReports1, tempReports2, tempReports3,tempReports4))
+                MyLocationService.LSR.allReports.addAll(concatenate(tempReports1, tempReports2, tempReports3,tempReports4))
 //        model.createMarkerOnMap(concatenate(tempReports1, tempReports2, tempReports3,tempReports4))
-//        Log.d("TESTGEOQURY_IMPO","B: "+concatenate(tempReports1, tempReports2, tempReports3,tempReports4).size.toString())
+        Log.d("TESTGEOQURY_IMPO","S: "+concatenate(tempReports1, tempReports2, tempReports3,tempReports4).size.toString())
                 counter = 0
             }else{
                 counter++
@@ -1070,7 +1248,7 @@ class HomeViewModel @Inject  constructor(
                     if (it.result != null) {
                         if (!Utils.isMockLocationEnabled(it.result)){
                             if(placeReportValidation(reportCountPerOneHour.value!!, loadTimeOfLastReport.value?:0)){
-                                addReport(geoPoint = GeoPoint(it.result.latitude,it.result.longitude), reportType = 1, speedLimit = speedLimit)
+                                addReport(bearing = it.result.bearing,geoPoint = GeoPoint(it.result.latitude,it.result.longitude), reportType = 1, speedLimit = speedLimit)
                             }else{
                                 isReachedQuotaDialog.value = true
                             }
@@ -1122,13 +1300,13 @@ class HomeViewModel @Inject  constructor(
                 }
         }
     }
-    private fun getGeofencingRequest(reports: List<Geofence> = ArrayList()): GeofencingRequest {
+    fun getGeofencingRequest(reports: List<Geofence> = ArrayList()): GeofencingRequest {
         return GeofencingRequest.Builder().apply {
             setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
             addGeofences(reports)
         }.build()
     }
-    private val geofencePendingIntent: PendingIntent by lazy {
+    val geofencePendingIntent: PendingIntent by lazy {
         val intent = Intent(app, GeofenceBroadcastReceiver::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             PendingIntent.getBroadcast(app, 0, intent, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT  )
@@ -1150,6 +1328,7 @@ class HomeViewModel @Inject  constructor(
     fun getUid():String?{
         return auth.currentUser?.uid
     }
+
     fun saveAlerts(info : SaveUserInfoInAlerted){
         auth.currentUser?.let {
             val alert : HashMap<String, Any> = HashMap<String, Any>()
@@ -1284,10 +1463,22 @@ class HomeViewModel @Inject  constructor(
             ds.debugModeSave(isEnable)
         }
     }
+    fun changeScreenStatus(isEnable: Boolean? = null,time : Int? = null){
+        viewModelScope.launch(Dispatchers.IO) {
+            ds.saveAppSetting(isEnable = isEnable,time = time)
+        }
+    }
     private fun retrieveIsDebugMode(){
         viewModelScope.launch(Dispatchers.IO) {
             ds.retrieveDebugMode().collect{
                 isDebugMode.postValue(it)
+            }
+        }
+    }
+    fun retrieveIsPreventScreenSleep(){
+        viewModelScope.launch(Dispatchers.IO) {
+            ds.retrieveAppSetting().collect{
+                appSetting.postValue(it)
             }
         }
     }
@@ -1316,6 +1507,114 @@ class HomeViewModel @Inject  constructor(
         }
         Log.d("TES-gRAAG","set false")
     }
+    suspend fun getMyReports() {
+
+        try {
+            auth.currentUser.let {
+
+                db.collection(DB_REF_REPORT).whereEqualTo("reportByUID", it?.uid).get().addOnSuccessListener { querySnapshot->
+                    val tempReports = ArrayList<SingleCustomReport>()
+                    querySnapshot.documents.forEach {ducument ->
+                        var likeCont = 0
+                        var disLikeCount = 0
+
+//                        val allFeedbacks = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Feedback").get().result.documents
+//                        val alertedCount = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Alerted").get().result.documents.size
+//                        allFeedbacks.forEach { feedback->
+//                            if (feedback.get("feedbackType") as Boolean){
+//                                likeCont +=1
+//                            }else{
+//                                disLikeCount +=1
+//                            }
+//                        }
+
+                        val geoLocation = ducument.get("geoLocation") as List<*>?
+                        if (geoLocation != null) {
+                            var tempReportLocation = Location("")
+                            val lat = geoLocation[0] as Double
+                            val lng = geoLocation[1] as Double
+
+                            tempReportLocation.latitude = lat
+                            tempReportLocation.longitude = lng
+
+                            tempReports.add(SingleCustomReport(
+                                isSuccess = true,
+                                reportLocation = tempReportLocation,
+                                reportTime = incidentTime(ducument.data?.get("reportTimeStamp") as Timestamp,app),
+                                reportAddress = ducument.data?.get("reportAddress") as String,
+                                reportType = (ducument.data?.get("reportType") as Long).toInt(),
+                                reportSpeedLimit = (ducument.data?.get("reportSpeedLimit") as Long?)?.toInt(),
+                                alertedCount = 0,
+
+                                feedbackLikeCount = likeCont,
+                                feedbackDisLikeCount = disLikeCount,
+                                reportId = ducument.id
+                                ))
+
+                        }
+                    }.let {
+                        myReports.addAll(tempReports)
+                    }
+
+                }
+                db.collection(DB_REF_ARCHIVE_REPORT).whereEqualTo("reportByUID", it?.uid).get().addOnSuccessListener {querySnapshott->
+                    val tempReports = ArrayList<SingleCustomReport>()
+                    querySnapshott.documents.forEach {ducument ->
+
+                        var likeCont = 0
+                        var disLikeCount = 0
+
+//                        val allFeedbacks = db.collection(if(!isDebugMode.value!!){DB_REF_ARCHIVE_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Feedback").get().result.documents
+//                        val alertedCount = db.collection(if(!isDebugMode.value!!){DB_REF_ARCHIVE_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Alerted").get().result.documents.size
+//                        allFeedbacks.forEach { feedback->
+//                            if (feedback.get("feedbackType") as Boolean){
+//                                likeCont +=1
+//                            }else{
+//                                disLikeCount +=1
+//                            }
+//                        }
+
+                        val geoLocation = ducument.get("geoLocation") as List<*>?
+                        if (geoLocation != null) {
+                            var tempReportLocation = Location("")
+                            val lat = geoLocation[0] as Double
+                            val lng = geoLocation[1] as Double
+
+                            tempReportLocation.latitude = lat
+                            tempReportLocation.longitude = lng
+
+                            tempReports.add(SingleCustomReport(
+                                isSuccess = true,
+                                isActive = 0,
+                                reportLocation = tempReportLocation,
+                                reportTime = incidentTime(ducument.data?.get("reportTimeStamp") as Timestamp,app),
+                                reportAddress = ducument.data?.get("reportAddress") as String,
+                                reportType = (ducument.data?.get("reportType") as Long).toInt(),
+                                reportSpeedLimit = (ducument.data?.get("reportSpeedLimit") as Long?)?.toInt(),
+                                alertedCount = 0,
+
+                                feedbackLikeCount = likeCont,
+                                feedbackDisLikeCount = disLikeCount,
+                                reportId = ducument.id
+                            ))
+
+                        }
+                    }.let {
+                        myReports.addAll(tempReports)
+                    }
+
+                }.let {
+                    myReports.sortBy { it -> it.isActive }
+                    //trySend(ResponseWithData(isSuccess = true, data = myReports, serverMessage = null))
+                }
+
+            }
+
+        } catch (e: Exception) {
+            //trySend(ResponseWithData(isSuccess = false, data = null, serverMessage = e.message))
+        }
+
+    }
     private fun containsSpecialCharacters(str: String): Boolean {
         val pattern = "[^A-Za-z0-9 ]"
         return str.matches(pattern.toRegex())
@@ -1336,35 +1635,66 @@ class HomeViewModel @Inject  constructor(
         }
 
     }
-}
-
-
-
-
-
-fun incidentTime(stamp : Timestamp,context: Context) : String{
-    val mines = (Timestamp.now().seconds - stamp.seconds)/60
-    Log.d("DEBUG_TIME_INCIDENT",mines.toString())
-    return try {
-        val sdf = SimpleDateFormat("MMMM dd, yyyy",Locale.US)
-        val netDate = Date((stamp.seconds * 1000))
-        if(mines > 60.0){
-            if ((mines/1440.0) > 1.0){
-                if ((mines/43200.0) >1.0){
-                    "${sdf.format(netDate)} • ${mines/43200} ${context.getString(R.string.lbl_nearestIncedednts_monthAgo)}"
+    fun incidentTime(stamp : Timestamp,context: Context) : String{
+        val mines = (Timestamp.now().seconds - stamp.seconds)/60
+        Log.d("DEBUG_TIME_INCIDENT",mines.toString())
+        return try {
+            val sdf = SimpleDateFormat("MMMM dd, yyyy",Locale.US)
+            val netDate = Date((stamp.seconds * 1000))
+            if(mines > 60.0){
+                if ((mines/1440.0) > 1.0){
+                    if ((mines/43200.0) >1.0){
+                        "${mines/43200} ${context.getString(R.string.lbl_nearestIncedednts_monthAgo)}"
+                    }else{
+                        "${mines/1440} ${context.getString(R.string.lbl_nearestIncedents_dayAgo)}"
+                    }
                 }else{
-                    "${sdf.format(netDate)} • ${mines/1440} ${context.getString(R.string.lbl_nearestIncedents_dayAgo)}"
+                    "${mines/60} ${context.getString(R.string.lbl_nearestIncedednts_hourAgo)}"
                 }
             }else{
-                "${sdf.format(netDate)} • ${mines/60} ${context.getString(R.string.lbl_nearestIncedednts_hourAgo)}"
+                "$mines ${context.getString(R.string.lbl_nearestIncedednts_minuteAgo)}"
+//            "${sdf.format(netDate)} • $mines ${context.getString(R.string.lbl_nearestIncedednts_minuteAgo)}"
             }
-        }else{
-            "${sdf.format(netDate)} • $mines ${context.getString(R.string.lbl_nearestIncedednts_minuteAgo)}"
+        } catch (e: Exception) {
+            e.toString()
         }
-    } catch (e: Exception) {
-        e.toString()
+
     }
 }
+
+
+suspend fun <T> Iterable<T>.forEachSuspendable(action: suspend (T) -> Unit) {
+    for (element in this) {
+        action(element)
+    }
+}
+
+
+//fun incidentTime(stamp : Timestamp,context: Context) : String{
+//    val mines = (Timestamp.now().seconds - stamp.seconds)/60
+//    Log.d("DEBUG_TIME_INCIDENT",mines.toString())
+//    return try {
+//        val sdf = SimpleDateFormat("MMMM dd, yyyy",Locale.US)
+//        val netDate = Date((stamp.seconds * 1000))
+//        if(mines > 60.0){
+//            if ((mines/1440.0) > 1.0){
+//                if ((mines/43200.0) >1.0){
+//                    "${mines/43200} ${context.getString(R.string.lbl_nearestIncedednts_monthAgo)}"
+//                }else{
+//                    "${mines/1440} ${context.getString(R.string.lbl_nearestIncedents_dayAgo)}"
+//                }
+//            }else{
+//                "${mines/60} ${context.getString(R.string.lbl_nearestIncedednts_hourAgo)}"
+//            }
+//        }else{
+//            "$mines ${context.getString(R.string.lbl_nearestIncedednts_minuteAgo)}"
+////            "${sdf.format(netDate)} • $mines ${context.getString(R.string.lbl_nearestIncedednts_minuteAgo)}"
+//        }
+//    } catch (e: Exception) {
+//        e.toString()
+//    }
+//
+//}
 fun incidentDistance(distance : Float) : String{
     val df = DecimalFormat("#.##")
     df.roundingMode = RoundingMode.DOWN
@@ -1414,54 +1744,7 @@ data class UserInformation(
 //    }
 //    rdbRef.child("count").addValueEventListener(postListener)
 //    }
-//    fun getMyReports() {
-//
-//        try {
-//            auth.currentUser.let {
-//                db.collection(DB_REF_REPORT).whereEqualTo("reportByUID", it?.uid).get().addOnSuccessListener { querySnapshot->
-//                    val tempReports = ArrayList<NewReport>()
-//                    querySnapshot.documents.forEach {ducument ->
-//                        tempReports.add(NewReport(
-//                            isActive = true,
-//                            geoLocation = ducument.data?.get("geoLocation") as List<*>?,
-//                            reportByUID = it?.uid,
-//                            reportAddress = ducument.data?.get("reportAddress") as String,
-//                            reportType = (ducument.data?.get("reportType") as Long).toInt(),
-//                           // reportTimeStamp = ducument.data?.get("reportTimeStamp") as Timestamp,
-//                        ))
-//                    }.let {
-//                        myReports.addAll(tempReports)
-//                    }
-//
-//                }
-//                db.collection(DB_REF_ARCHIVE_REPORT).whereEqualTo("reportByUID", it?.uid).get().addOnSuccessListener {querySnapshott->
-//                    val tempReports = ArrayList<NewReport>()
-//                    querySnapshott.documents.forEach {ducument ->
-//                        Log.d("MYREPORTS",ducument.data?.get("reportAddress").toString())
-//                        tempReports.add(NewReport(
-//                            isActive = false,
-//                            geoLocation = ducument.data?.get("geoLocation") as List<*>?,
-//                            reportByUID = it?.uid,
-//                            reportAddress = ducument.data?.get("reportAddress") as String,
-//                            reportType = (ducument.data?.get("reportType") as Long).toInt(),
-//                            //reportTimeStamp = ducument.data?.get("reportTimeStamp") as Timestamp,
-//                        ))
-//                    }.let {
-//                        myReports.addAll(tempReports)
-//                    }
-//
-//                }.let {
-//                    myReports.sortBy { it -> it.isActive }
-//                    //trySend(ResponseWithData(isSuccess = true, data = myReports, serverMessage = null))
-//                }
-//
-//            }
-//
-//        } catch (e: Exception) {
-//            //trySend(ResponseWithData(isSuccess = false, data = null, serverMessage = e.message))
-//        }
-//
-//    }
+
 //    fun restStatistics() =
 //        viewModelScope.launch(Dispatchers.IO) {
 //            dataStoreRepository.resetStatistics()

@@ -12,6 +12,9 @@ data class SingleCustomReport(
     var reportType: Int = 0,
     var alertedCount: Int = 0,
     var reportSpeedLimit: Int? = 0,
+
+    var reportId: String? = null,
+    var isActive: Int = 1,
 //    var reportOwnerType: Int? = 0,
 
     var isLiked: Boolean? = null,

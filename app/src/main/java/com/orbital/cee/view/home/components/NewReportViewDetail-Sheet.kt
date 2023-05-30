@@ -1,6 +1,7 @@
 package com.orbital.cee.view.home.components
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -21,7 +22,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -35,23 +36,20 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orbital.cee.R
+import com.orbital.cee.core.MyLocationService
+import com.orbital.cee.model.AlarmLessReports
+import com.orbital.cee.model.NewReport
 import com.orbital.cee.model.SingleCustomReport
 import com.orbital.cee.view.home.HomeViewModel
 import com.orbital.cee.view.home.Menu.componenets.radio
 import com.orbital.cee.view.home.UserDao
+import com.orbital.cee.view.home.data_Store
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
-import java.io.IOException
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.util.*
+import kotlin.collections.ArrayList
 
 @SuppressLint("CoroutineCreationDuringComposition")
 @RequiresApi(Build.VERSION_CODES.S)
@@ -65,19 +63,29 @@ fun NewReportViewDetail(vModel : HomeViewModel,
                         ){
     val isLoading = remember { mutableStateOf(true) }
     val isError = remember { mutableStateOf(false) }
-
+    val context = LocalContext.current
     val isLike = remember { mutableStateOf<Boolean?>(null) }
     val isShowFeedBackPanel = remember { mutableStateOf(false) }
     val isShowFeedBack = remember { mutableStateOf(false) }
+    val isChangeDetacted = remember { mutableStateOf(false) }
+    val isMuted = remember { mutableStateOf(false) }
     //val isLiked = remember { mutableStateOf<Boolean?>(null) }
     val dislikeReason = remember { mutableStateOf<Int?>(null) }
     var pReportId = remember {mutableStateOf("")}
     val report = remember { mutableStateOf(SingleCustomReport(isSuccess = false))}
+    val localReport = remember { mutableStateOf<NewReport?>(null)}
     val icon = remember {mutableStateOf(R.drawable.cee)}
     val title = remember {mutableStateOf("")}
     val reportOwnerInfo = remember {mutableStateOf<UserDao>(UserDao())}
     val color = remember {mutableStateOf(Color(0xFF495CE8))}
 //    var userType = remember { mutableStateOf(0) }
+    val mutedReports =context.data_Store.data.collectAsState(initial = AlarmLessReports()).value
+    if (mutedReports.mutedReports.isNotEmpty()){
+        MyLocationService.LSR.allMutedReports.addAll(mutedReports.mutedReports)
+        Log.d("DEBUG_APP_SETTING_DATA_STORE",mutedReports.mutedReports.size.toString())
+    }else{
+        MyLocationService.LSR.allMutedReports.clear()
+    }
 
     val scrole = rememberScrollState()
 //    val infiniteTransition = rememberInfiniteTransition()
@@ -90,27 +98,25 @@ fun NewReportViewDetail(vModel : HomeViewModel,
         mutableStateOf(0.0f)
     }
     val scrollState = rememberScrollState()
-//    val scope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
     val coroutineScope = rememberCoroutineScope()
     LaunchedEffect(Unit){
-        vModel.loadUserInfoFromFirebase().collect{
-            if (it.isSuccess){
-            }
-        }
 
-//        delay(6000)
-//        scope.launch { scrollState.animateScrollTo(150,tween(durationMillis = 1000, easing = FastOutLinearInEasing)) }
-//        delay(1500)
-//        scope.launch { scrollState.animateScrollTo(0,tween(durationMillis = 1500, easing = FastOutSlowInEasing)) }
     }
-
+    isMuted.value = MyLocationService.LSR.isThisReportMuted(reportId = reportId.value)
     Log.d("NRepo","NEW: "+reportId.value)
     if(pReportId.value != reportId.value){
         isLoading.value = true
+
+        MyLocationService.LSR.getReportDataById(reportId.value)?.let {
+            localReport.value = it
+            isLoading.value = false
+        }
         coroutineScope.launch {
             vModel.getSingleReport(reportId = reportId.value).collect{
                 if (it.isSuccess){
                     report.value = it
+
                     isLike.value = it.isLiked
                     likePercent.value = 0.001f.coerceAtLeast (it.feedbackLikeCount.toFloat()/ (it.feedbackLikeCount.toFloat() + it.feedbackDisLikeCount.toFloat()))
                     disLikePercent.value =0.001f.coerceAtLeast (it.feedbackDisLikeCount.toFloat()/(it.feedbackLikeCount.toFloat()+it.feedbackDisLikeCount.toFloat()))
@@ -145,7 +151,7 @@ fun NewReportViewDetail(vModel : HomeViewModel,
         pReportId.value = reportId.value
 
     }
-    when(report.value.reportType){
+    when(localReport.value?.reportType){
         1 ->{
             icon.value = R.drawable.ic_camera_fab
             title.value = stringResource(R.string.btn_home_report_action_sheet_roadCam)
@@ -255,20 +261,20 @@ fun NewReportViewDetail(vModel : HomeViewModel,
 
                 Row(horizontalArrangement = Arrangement.SpaceBetween) {
                     Box(modifier = Modifier
-                        .height(40.dp)
-                        .clip(RoundedCornerShape(15.dp))
-                        .fillMaxWidth(0.30f)
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(35.dp))
+                        .fillMaxWidth(0.80f)
                         .shimmerEffect())
                     Spacer(modifier = Modifier.width(5.dp))
                     Box(modifier = Modifier
-                        .height(40.dp)
-                        .clip(RoundedCornerShape(15.dp))
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(4.dp))
                         .fillMaxWidth(0.50f)
                         .shimmerEffect())
                     Spacer(modifier = Modifier.width(5.dp))
                     Box(modifier = Modifier
-                        .height(40.dp)
-                        .clip(RoundedCornerShape(15.dp))
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(4.dp))
                         .fillMaxWidth()
                         .shimmerEffect())
                 }
@@ -309,31 +315,50 @@ fun NewReportViewDetail(vModel : HomeViewModel,
                 }
 
             }
-
-
         }else{
             Column(modifier = Modifier
                 .fillMaxSize()
                 .padding(15.dp)) {
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(text = "${report.value.reportTime}", color = Color(0XFF848484), fontWeight = FontWeight.W300
+                    localReport.value?.reportTimeStamp?.let {
+                    Text(text = vModel.incidentTime(it, context) , color = Color(0XFF848484), fontWeight = FontWeight.W300
                         , modifier = Modifier.fillMaxWidth(0.6f))
+                    }
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
                         if(vModel.userInfo.value.userType == 2 ||vModel.userInfo.value.userType == 1){
                             TextButton(onClick ={onEditSpeedLimit(reportId.value,report.value.reportSpeedLimit)} ) {
                                 Text(
-                                    text = report.value.reportSpeedLimit.toString()+" Km/h",
+                                    text = localReport.value?.reportSpeedLimit.toString()+" Km/h",
                                     style = TextStyle(textDecoration = TextDecoration.Underline)
                                 )
                             }
-                            IconButton(onClick ={vModel.extendReportTime(reportId.value)} ) {
+                            IconButton(onClick ={
+                                vModel.extendReportTime(reportId.value)
+                            } ) {
                                 Icon(painter = painterResource(id = R.drawable.refresh_circle), contentDescription = "", tint = Color(0xFF495CE8))
                             }
 
                         }
-
-//                        Spacer(modifier = Modifier.width(5.dp))
+                        if (report.value.reportType == 5 || report.value.reportType == 6 || report.value.reportType == 4){
+                            if(isMuted.value){
+                                Icon(modifier = Modifier.clickable {
+                                    scope.launch {
+                                        unMuteReport(reportId.value, context = context)
+                                    }
+                                    isChangeDetacted.value = true
+                                    isMuted.value = false
+                                }.size(24.dp),painter = painterResource(id = R.drawable.ic_sound_off), contentDescription = "", tint = Color(0xFF848484))
+                            }else{
+                                Icon(modifier = Modifier.clickable {
+                                    scope.launch {
+                                        muteReport(reportId.value, context = context)
+                                    }
+                                    isChangeDetacted.value = true
+                                    isMuted.value = true
+                                }.size(24.dp),painter = painterResource(id = R.drawable.ic_sound_on), contentDescription = "", tint = Color(0xFF495CE8))
+                            }
+                        }
                         if (report.value.isReportOwner || vModel.userInfo.value.userType == 2){
                             Spacer(modifier = Modifier.width(5.dp))
                             if (vModel.isDeleteReportRequested.value){
@@ -369,7 +394,7 @@ fun NewReportViewDetail(vModel : HomeViewModel,
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Box(modifier = Modifier.width(60.dp)){
-                                ReportIconWithSpeedLimit(icon = icon.value, speedLimit = report.value.reportSpeedLimit, color = color.value)
+                                ReportIconWithSpeedLimit(icon = icon.value, speedLimit = localReport.value?.reportSpeedLimit, color = color.value)
                             }
                             Spacer(modifier = Modifier.width(4.dp))
                             Column {
@@ -395,7 +420,7 @@ fun NewReportViewDetail(vModel : HomeViewModel,
                         Row(modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(scrollState), horizontalArrangement = Arrangement.Start) {
-                            report.value.reportAddress?.let{
+                            localReport.value?.reportAddress?.let{
                                 if (it == ""){
 
                                 }else{
@@ -411,7 +436,7 @@ fun NewReportViewDetail(vModel : HomeViewModel,
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Icon(modifier = Modifier.size(18.dp),painter = painterResource(id = R.drawable.ic_bold_location), contentDescription = "", tint = Color(0XFFAAAAAA))
                                                 Spacer(modifier = Modifier.width(5.dp))
-                                                Text(text = "${report.value.reportAddress}", maxLines = 1,overflow = TextOverflow.Ellipsis,fontWeight = FontWeight.W400)
+                                                Text(text = it, maxLines = 1,overflow = TextOverflow.Ellipsis,fontWeight = FontWeight.W400)
                                             }
                                         }
                                         Log.d("SCROL","${scrole.maxValue}")
@@ -752,4 +777,24 @@ fun Modifier.shimmerEffect(): Modifier = composed {
 @Composable
 fun balb(){
     //NewReportViewDetail()
+}
+private suspend fun muteReport(el: String, context: Context){
+    context.data_Store.updateData {appSettings->
+        val tempL : ArrayList<String> = arrayListOf()
+        tempL.addAll(appSettings.mutedReports)
+        if (!tempL.contains(el)){
+            tempL.add(el)
+            MyLocationService.LSR.allMutedReports.addAll(tempL)
+        }
+        appSettings.copy(mutedReports = tempL)
+    }
+}
+private suspend fun unMuteReport(el: String, context: Context){
+    context.data_Store.updateData {appSettings->
+        val tempL : ArrayList<String> = arrayListOf()
+        tempL.addAll(appSettings.mutedReports)
+        tempL.remove(el)
+        MyLocationService.LSR.allMutedReports.addAll(tempL)
+        appSettings.copy(mutedReports = tempL)
+    }
 }

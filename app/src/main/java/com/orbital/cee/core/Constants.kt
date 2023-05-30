@@ -21,6 +21,10 @@ object Constants {
     const val PREFERENCE_ADS_WATCH_TIME = "adsWatchTime"
     const val DB_REF_REPORT = "Reports"
     const val DEBUG_MODE_PREF_KEY = "debugModePrefKey"
+
+    const val SCREEN_SLEEP_MODE_PREF_KEY = "screenSleepModePrefKey"
+    const val SCREEN_SLEEP_TIMEOUT_PREF_KEY = "ScreenSleepTimeoutPrefKey"
+
     const val DB_REF_REPORT_DEBUG = "ReportsDebug"
     const val DB_REF_ARCHIVE_REPORT = "ArchiveReports"
     const val DB_REF_ALERTED = "Alerted"

@@ -391,6 +391,8 @@ fun TripInfoContainer(
 //    return path
 //}
 
+
+
 @Composable
 fun Loading(size : Int){
     val composition by rememberLottieComposition(
