@@ -74,8 +74,32 @@ fun ReliabilityProgressRatio(likeCount: Int, dislikeCount: Int) {
         }
     }
 }
+@Composable
+fun progressRatioCeeKer(currentPoints: Int, nextLevelPoints: Int) {
+    val total = currentPoints + nextLevelPoints
+    val likePercentage = if (total > 0) currentPoints.toFloat() / total.toFloat() else 0f
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .height(14.dp)
+                .clip(CircleShape)
+                .background(Color(0x3457D654))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(likePercentage)
+                    .height(14.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF57D654))
+            )
+        }
+    }
+}
 @Preview
 @Composable
 fun prev(){
-    ReliabilityProgressRatio(20, 10)
+    progressRatioCeeKer(20, 10)
 }

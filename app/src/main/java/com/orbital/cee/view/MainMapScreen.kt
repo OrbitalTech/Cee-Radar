@@ -82,7 +82,12 @@ import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.rewarded.RewardedAd
+import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.GeoPoint
 import com.mapbox.geojson.Feature
@@ -126,6 +131,7 @@ import com.orbital.cee.model.Trip
 import com.orbital.cee.utils.MetricsUtils
 import com.orbital.cee.utils.Utils
 import com.orbital.cee.view.LocationNotAvailable.LocationNotAvailable
+import com.orbital.cee.view.home.HomeActivity
 import com.orbital.cee.view.home.HomeViewModel
 import com.orbital.cee.view.home.SaveUserInfoInAlerted
 import com.orbital.cee.view.home.UserInformation
@@ -166,6 +172,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
+@Suppress("DeferredResultUnused")
 @SuppressLint("MissingPermission")
 @RequiresApi(Build.VERSION_CODES.S)
 @OptIn(ExperimentalMaterialApi::class, ExperimentalPagerApi::class)
@@ -181,7 +188,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
     val showAddReportManuallyDialog = remember { mutableStateOf(false) }
 
     var speedLimit :Int? = 0
-     var reportIdEditing :String = ""
+     var reportIdEditing = ""
 
      val reportType = remember { mutableIntStateOf(1) }
      val alertCount = remember { mutableIntStateOf(0) }
@@ -189,7 +196,9 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
      val timeLastReport = remember { mutableLongStateOf(0L) }
      val lLocation = Location("")
 
-    val mRewardedAd : RewardedAd? = null
+    var mRewardedAd : RewardedAd ? = null
+    var mInterstitialAd: InterstitialAd? = null
+
     val isPurchasedAdRemove = remember { mutableStateOf(false) }
     val deleteReportDialog = remember { mutableStateOf(false) }
     val isInsideP2PZone = remember { mutableStateOf(false) }
@@ -212,7 +221,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
     val bottomSheetState = rememberBottomSheetState(initialValue = BottomSheetValue.Collapsed, confirmStateChange = {
 //        Log.d("DEBUG_MODAL_BOTTOM_SHEET", "col: $it")
         if(it == BottomSheetValue.Collapsed){
-            bottomSheetContentId.value = 0
+            bottomSheetContentId.intValue = 0
         }
         true
     })
@@ -225,8 +234,8 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
 
 
 
-    model.loadTimeOfLastReport.observeAsState().value?.let {timeLastReport.value = it }
-    model.reportCountPerOneHour.observeAsState().value?.let {reportCount.value = it }
+    model.loadTimeOfLastReport.observeAsState().value?.let {timeLastReport.longValue = it }
+    model.reportCountPerOneHour.observeAsState().value?.let {reportCount.intValue = it }
     val cameraState = remember {mutableStateOf<CameraState?>(null)}
     val lastWatchedAd = model.lsatAdsWatched.observeAsState()
     val userT = model.userType.observeAsState()
@@ -355,10 +364,42 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
         }
 
     }
+    LaunchedEffect(Unit){
+        val adRequest = AdRequest.Builder().build()
+        InterstitialAd.load(context, context.getString(R.string.interstitial_ad_three_stop_id) , adRequest, object : InterstitialAdLoadCallback() {
+            override fun onAdFailedToLoad(adError: LoadAdError) {
+                mInterstitialAd = null
+            }
+            override fun onAdLoaded(interstitialAd: InterstitialAd) {
+                mInterstitialAd = interstitialAd
+            }
+        })
+        RewardedAd.load(context,context.getString(R.string.remove_ads_rewarded_video_id) ,adRequest,object : RewardedAdLoadCallback(){
+            override fun onAdFailedToLoad(adError: LoadAdError) {
+                mRewardedAd = null
+            }
+            override fun onAdLoaded(rewardedAd: RewardedAd) {
+                mRewardedAd = rewardedAd
+            }
+        })
+        mRewardedAd?.fullScreenContentCallback = object: FullScreenContentCallback() {
+            override fun onAdClicked() {}
+            override fun onAdDismissedFullScreenContent() {
+                mRewardedAd = null
+            }
+            override fun onAdImpression() {}
+            override fun onAdShowedFullScreenContent() {}
+        }
+        if (HomeActivity.Singlt.stopCount.value == 4){
+            HomeActivity.Singlt.stopCount.value = 0
+            if (!isPurchasedAdRemove.value){
+                mInterstitialAd?.show(context as Activity)
+            }
+        }
+    }
 
     LaunchedEffect(Unit){
-
-        model.getUid()?.let { _ ->
+        model.getUid()?.let {
             model.setOnlineStatus()
             val userInformation : UserInformation = model.getUserInformation()
             if (userInformation.userName == ""){ showRegisterDialog.value = true }else{ username.value = userInformation.userName!! }
@@ -375,7 +416,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
         }
     }
     if (GeofenceBroadcastReceiver.GBRS.GeoId.value != null && GeofenceBroadcastReceiver.GBRS.GeoId.value != reportId){
-        model.addAlertCount(alertCount.value)
+        model.addAlertCount(alertCount.intValue)
         reportId = GeofenceBroadcastReceiver.GBRS.GeoId.value!!
         model.inSideReportToast.value = true
 //            model.slider.value = false
@@ -453,12 +494,10 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                 when (model.whichButtonClicked.value) {
                     1 -> {
                         UpdateCeeMap(onButtonClicked = {RT->
-                            if(GeofenceBroadcastReceiver.GBRS.GeoId.value != null){
-
-                            }else{
+                            if(GeofenceBroadcastReceiver.GBRS.GeoId.value == null){
                                 if (MetricsUtils.isOnline(context)){
                                     model.vibrate(context = context)
-                                    reportType.value = RT
+                                    reportType.intValue = RT
                                     if (model.userType.value == 2){
                                         if(RT == 1 || RT == 6 || RT == 5){
                                             model.whichButtonClicked.value =6
@@ -534,7 +573,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                             }
                         }, onClickWatchVideo = {
                             if(mRewardedAd != null){
-                                mRewardedAd.show(context as Activity) {
+                                mRewardedAd!!.show(context as Activity) {
                                     Log.d("TAG_AD_DEB", "User earned the reward.${it.type} , ${it.amount}")
                                     coroutineScope.launch { isPurchasedAdRemove.value = true  }
                                     model.saveWatchAdTime(Timestamp.now())
@@ -598,7 +637,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                     sheetPeekHeight = (85 + model.navigationBarHeight.value).dp,
                     sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
                     sheetContent = {
-                        when (bottomSheetContentId.value) {
+                        when (bottomSheetContentId.intValue) {
                             1->{
                                 Speed(
                                     model = model,
@@ -607,7 +646,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                     onClickContinue = {model.continueTrip()},
                                     onClickBack = {
                                         coroutineScope.launch {
-                                            bottomSheetContentId.value = 44
+                                            bottomSheetContentId.intValue = 44
                                             delay(10)
                                             bottomSheetState.collapse()
                                         }
@@ -628,7 +667,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                     },
                                     onClickSpeed = {
                                         coroutineScope.launch {
-                                            bottomSheetContentId.value = 1
+                                            bottomSheetContentId.intValue = 1
                                             delay(10)
                                             bottomSheetState.expand()
                                         }
@@ -652,7 +691,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                 LaunchedEffect(Unit) {
                                     while (true) {
                                         //timeRemain.value = getRemain(lastWatchedAd.value,Timestamp.now().seconds)
-                                        timeRemainInt.value = MetricsUtils.getRemainInt(
+                                        timeRemainInt.floatValue = MetricsUtils.getRemainInt(
                                             lastWatchedAd.value,
                                             Timestamp.now().seconds
                                         )
@@ -667,13 +706,12 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                             fab(model,
                                 navigationBarHeight = model.navigationBarHeight.value,
                                 onClickReport = {
-                                    if (GeofenceBroadcastReceiver.GBRS.GeoId.value != null) {
-                                    } else {
+                                    if (GeofenceBroadcastReceiver.GBRS.GeoId.value == null) {
                                         if (MetricsUtils.isOnline(context)) {
                                             if ((traveledDistance.value ?: 0f) >= 15f || model.userType.value == 2) {
                                                 if (Permissions.hasBackgroundLocationPermission(context = context)) {
                                                     model.vibrate(context = context)
-                                                    reportType.value = 1
+                                                    reportType.intValue = 1
                                                     if (model.userType.value == 2) {
                                                         model.whichButtonClicked.value = 6
                                                         coroutineScope.launch {
@@ -859,7 +897,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                         )
                                     }
                                     if (model.isCameraMove.value && MyLocationService.LSS.isEnteredPointToPointRoad.value) {
-                                        if(MyLocationService.LSS.roadMaxSpeed.value < MyLocationService.LSS.inP2PAverageSpeed.value){
+                                        if(MyLocationService.LSS.roadMaxSpeed.intValue < MyLocationService.LSS.inP2PAverageSpeed.intValue){
                                             Button(
                                                 onClick = {},
                                                 colors = ButtonDefaults.buttonColors(
@@ -887,7 +925,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                             onClick = {},
                                             contentPadding = PaddingValues(0.dp),
                                             colors = ButtonDefaults.buttonColors(
-                                                backgroundColor = if (MyLocationService.LSS.roadMaxSpeed.value < MyLocationService.LSS.inP2PAverageSpeed.value) {
+                                                backgroundColor = if (MyLocationService.LSS.roadMaxSpeed.intValue < MyLocationService.LSS.inP2PAverageSpeed.intValue) {
                                                     Color(0xFFEA4E34)
                                                 } else {
                                                     Color(0xFF57D654)
@@ -900,12 +938,12 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                                 .offset(
                                                     (conf.screenWidthDp / 2).dp,
                                                     ((conf.screenHeightDp / 2) - 10).dp
-                                                ), shape =if (singleReport.value.reportSpeedLimit!! < MyLocationService.LSS.inP2PAverageSpeed.value) { RoundedCornerShape(topStart = 8.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 18.dp)}else{
+                                                ), shape =if (singleReport.value.reportSpeedLimit!! < MyLocationService.LSS.inP2PAverageSpeed.intValue) { RoundedCornerShape(topStart = 8.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 18.dp)}else{
                                                 RoundedCornerShape(24.dp)
                                                 }
                                         ) {
                                             Text(
-                                                text = "${MyLocationService.LSS.inP2PAverageSpeed.value}",
+                                                text = "${MyLocationService.LSS.inP2PAverageSpeed.intValue}",
                                                 color = Color.White,
                                                 fontSize = 12.sp
                                             )
@@ -945,13 +983,13 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                                             model.isTripStarted.value = false
                                                             model.trip.value.endTime = Date()
                                                             model.trip.value.distance =
-                                                                MyLocationService.LSS.TripDistance.value
+                                                                MyLocationService.LSS.TripDistance.floatValue
                                                             model.trip.value.startTime =
                                                                 MyLocationService.LSS.TripStartTime
                                                             model.trip.value.maxSpeed =
-                                                                MyLocationService.LSS.TripMaxSpeed.value
+                                                                MyLocationService.LSS.TripMaxSpeed.intValue
                                                             model.trip.value.speedAverage =
-                                                                MyLocationService.LSS.TripAverageSpeed.value
+                                                                MyLocationService.LSS.TripAverageSpeed.intValue
                                                             model.trip.value.listOfLatLon.addAll(
                                                                 lrouteCoordinates
                                                             ).let { ite ->
@@ -1150,7 +1188,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                             }
                                         }
                                     }
-                                    Column() {
+                                    Column {
                                         if (!isPurchasedAdRemove.value) {
                                             Box(
                                                 modifier = Modifier
@@ -1419,7 +1457,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                             onDismiss = {
                                                 showAddReportManuallyDialog.value = false
                                             },
-                                            onPositiveClick = { point, type, time, limit, address,isWithNoti ->
+                                            onPositiveClick = { point, type, time, limit, address, _ ->
                                                 model.addReport(
                                                     geoPoint = point,
                                                     reportType = type,
@@ -1478,7 +1516,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
 
                                 if(model.isDebugMode.value!!){
 
-                                    var offsetY by remember { mutableStateOf(450f) }
+                                    var offsetY by remember { mutableFloatStateOf(450f) }
                                     Button(
                                         onClick = {},
                                         contentPadding = PaddingValues(0.dp),
@@ -1506,7 +1544,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                     }
                                 }
                                 MyLocationService.GlobalStreetSpeed.streetSpeedLimit.value?.let {
-                                    var offsetY by remember { mutableStateOf(650f) }
+                                    var offsetY by remember { mutableFloatStateOf(650f) }
                                     Button(
                                         onClick = {},
                                         contentPadding = PaddingValues(0.dp),
@@ -1538,10 +1576,7 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                                         )
                                     }
                                 }
-
                             }
-
-
                             val langCode = model.langCode.observeAsState()
                             var locale = Locale("en")
                             langCode.value?.let {
@@ -1563,9 +1598,6 @@ fun MainMapScreen(model : HomeViewModel, trips :ArrayList<Trip?>?) {
                     }
                 )
             })
-
-
-
         AnimatedVisibility(
             modifier = Modifier.matchParentSize(),
             visible = isShowMenu.value,

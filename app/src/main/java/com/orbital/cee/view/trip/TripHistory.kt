@@ -3,10 +3,13 @@ package com.orbital.cee.view.trip
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,7 +19,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -64,26 +69,55 @@ fun TripHistory( onClickBack:()->Unit, tripList : ArrayList<Trip?>?, onDeleteTri
             })
         }) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .border(
-                        width = 1.dp,
-                        color = Color(0XFFE4E4E4),
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .height(85.dp)
+                .drawBehind {
+                    val strokeWidth = 1 * density
+                    val y = size.height - strokeWidth / 2
+
+                    drawLine(
+                        Color(0xFFE4E4E4),
+                        Offset(0f, y),
+                        Offset(size.width, y),
+                        strokeWidth
                     )
-                    .padding(bottom = 8.dp),
-                contentAlignment = Alignment.BottomCenter
-            ) {
+            }
+                .padding(bottom = 8.dp), contentAlignment = Alignment.BottomCenter) {
                 Text(text = stringResource(id = R.string.lbl_history_appBar_title), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 20.sp)
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart){
-                    IconButton(onClick = onClickBack, modifier = Modifier.padding(end = 12.dp)) {
-                        Icon(modifier = Modifier
-                            .size(22.dp)
-                            .rotate(rotate), tint = Color(0xFF848484) , painter = painterResource(id = R.drawable.ic_arrow_back), contentDescription ="" )
-                    }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp,bottom = 6.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onClickBack
+                        )
+                , contentAlignment = Alignment.BottomStart
+                ){
+                    Icon(modifier = Modifier
+                        .rotate(rotate), tint = Color(0xFF848484) , painter = painterResource(id = R.drawable.ic_arrow_left), contentDescription ="" )
                 }
             }
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .height(80.dp)
+//                    .border(
+//                        width = 1.dp,
+//                        color = Color(0XFFE4E4E4),
+//                    )
+//                    .padding(bottom = 8.dp),
+//                contentAlignment = Alignment.BottomCenter
+//            ) {
+//                Text(text = stringResource(id = R.string.lbl_history_appBar_title), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 20.sp)
+//                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart){
+//                    IconButton(onClick = onClickBack) {
+//
+//                    }
+//                }
+//            }
             Column(modifier = Modifier
                 .padding(12.dp)
                 .fillMaxSize()
@@ -92,9 +126,17 @@ fun TripHistory( onClickBack:()->Unit, tripList : ArrayList<Trip?>?, onDeleteTri
                 if (li != null) {
                     if(li.size<=1){
                         Box(modifier = Modifier
-                            .fillMaxWidth()
-                            .height(60.dp), contentAlignment = Alignment.Center){
-                            Text(text = "Your trip list is empty !!")
+                            .fillMaxSize(), contentAlignment = Alignment.Center){
+                            Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                Spacer(modifier = Modifier.height(70.dp))
+                                Image(modifier = Modifier
+                                    .height(335.dp)
+                                    .width(255.dp),painter = painterResource(id = R.drawable.trip_list_empty), contentDescription = "")
+                                Spacer(modifier = Modifier.height(75.dp))
+                                Text(text = "No Trip Recorded", color = Color(0xFF171729), fontSize = 18.sp)
+                                Spacer(modifier = Modifier.height(5.dp))
+                                Text(text = "to add a trip use Save trip", color = Color(0xFF848484), fontSize = 16.sp)
+                            }
                         }
                     }else{
                         li.forEach{ trip->

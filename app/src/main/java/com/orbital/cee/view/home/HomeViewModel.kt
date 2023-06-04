@@ -106,6 +106,7 @@ import java.net.URL
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.regex.Pattern
 import javax.inject.Inject
 import kotlin.collections.ArrayList
 
@@ -1419,7 +1420,7 @@ class HomeViewModel @Inject  constructor(
     fun completeUserRegister(userName:String) : Flow<ResponseDto> {
         return callbackFlow {
             if (userName.length in 2..31){
-                if(containsSpecialCharacters(userName)){
+//                if(containsSpecialCharacters(userName)){
                     if (!startsWithCee(userName)){
                         auth.uid?.let { uID ->
                             val user : HashMap<String, Any> = HashMap<String, Any>()
@@ -1433,9 +1434,9 @@ class HomeViewModel @Inject  constructor(
                     }else{
                         trySend(ResponseDto(isSuccess = false, serverMessage = "invalid full name"))
                     }
-                }else{
-                    trySend(ResponseDto(isSuccess = false, serverMessage = "invalid full name"))
-                }
+//                }else{
+//                    trySend(ResponseDto(isSuccess = false, serverMessage = "invalid full name"))
+//                }
             }else{
                 trySend(ResponseDto(isSuccess = false, serverMessage = "full name length invalid."))
             }
@@ -1615,10 +1616,13 @@ class HomeViewModel @Inject  constructor(
         }
 
     }
-    private fun containsSpecialCharacters(str: String): Boolean {
-        val pattern = "[^A-Za-z0-9 ]"
-        return str.matches(pattern.toRegex())
-    }
+//    private fun containsSpecialCharacters(str: String): Boolean {
+//        val pp = Pattern.compile("[^A-Za-z]")
+//        val mm = pp.matcher(str)
+//        val pattern = "[A-Za-z0-9]"
+//        Log.d("ISMUTCH_VALID",mm.find().toString())
+//        return str.matches(pattern.toRegex())
+//    }
     private fun startsWithCee(str: String): Boolean {
         val prefix = "cee"
         return str.startsWith(prefix)

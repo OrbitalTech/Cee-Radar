@@ -37,6 +37,8 @@ import com.mapbox.geojson.Point
 import com.orbital.cee.R
 import com.orbital.cee.core.MyLocationService.GlobalStreetSpeed.streetSpeedLimit
 import com.orbital.cee.core.MyLocationService.LSR.getReportDataById
+import com.orbital.cee.core.MyLocationService.LSR.resetLSR
+import com.orbital.cee.core.MyLocationService.LSS.LSSReset
 import com.orbital.cee.core.MyLocationService.LSS.calcTrip
 import com.orbital.cee.core.MyLocationService.LSS.isChangeDetected
 import com.orbital.cee.core.MyLocationService.LSS.isLocationChange
@@ -99,21 +101,45 @@ class MyLocationService: Service() {
         var isEnteredPointToPointRoad = mutableStateOf(false)
         var lrouteCoordinates = ArrayList<Point>()
         var listOfSpeedsInTrip = arrayListOf<Int>()
+
+
+        fun LSSReset(){
+            tripLastLocation = null
+            inP2PLastLocation = null
+            inP2PDistance = 0.0f
+            TripDistance.floatValue = 0f
+            TripDuration.longValue = 0L
+            isTripPused.value = false
+             isChangeDetected.value = false
+             isLocationChange.value = false
+            isEnteredPointToPointRoad.value = false
+             TripMaxSpeed.intValue = 0
+             TripAverageSpeed.intValue = 0
+             inP2PAverageSpeed.intValue = 0
+             roadMaxSpeed.intValue = 0
+             speed.intValue = 0
+             TripStartTime = Date()
+             EnteredP2PTime = Date()
+
+             lrouteCoordinates = ArrayList<Point>()
+             listOfSpeedsInTrip = arrayListOf<Int>()
+        }
+
         fun calcTrip(cloc: Location) {
             if (!isTripPused.value){
                 if (tripLastLocation == null) {
                     tripLastLocation = cloc
                 }else{
                     listOfSpeedsInTrip.add((cloc.speed * 3.6).toInt())
-                    TripAverageSpeed.value = listOfSpeedsInTrip.average().toInt()
-                    TripMaxSpeed.value = listOfSpeedsInTrip.max().toInt()
+                    TripAverageSpeed.intValue = listOfSpeedsInTrip.average().toInt()
+                    TripMaxSpeed.intValue = listOfSpeedsInTrip.max().toInt()
 
                     val tempDistance = tripLastLocation!!.distanceTo(cloc)/1000
                     tripLastLocation = cloc
-                    TripDistance.value = TripDistance.value + tempDistance
+                    TripDistance.floatValue = TripDistance.floatValue + tempDistance
                 }
             }else{
-                TripDuration.value = MetricsUtils.getSeconds(TripStartTime, Date())
+                TripDuration.longValue = MetricsUtils.getSeconds(TripStartTime, Date())
             }
 
         }
@@ -132,13 +158,15 @@ class MyLocationService: Service() {
         fun resetP2PCalc(){
             inP2PLastLocation = null
             inP2PDistance = 0f
-            inP2PAverageSpeed.value = 0
+            inP2PAverageSpeed.intValue = 0
         }
         fun resetTrip(){
             TripStartTime = Date()
-            TripDistance.value = 0f
-            TripAverageSpeed.value = 0
-            TripMaxSpeed.value = 0
+            TripDistance.floatValue = 0f
+            TripAverageSpeed.intValue = 0
+            TripMaxSpeed.intValue = 0
+            listOfSpeedsInTrip.clear()
+            lrouteCoordinates.clear()
         }
     }
     object GlobalStreetSpeed{
@@ -147,6 +175,10 @@ class MyLocationService: Service() {
     object LSR{
         val allReports = ArrayList<NewReport>()
         val allMutedReports = ArrayList<String>()
+        fun resetLSR(){
+            allReports.clear()
+            allMutedReports.clear()
+        }
         fun getReportDataById(reportId:String): NewReport?{
             return allReports.find { report ->
                 report.reportId == reportId
@@ -186,7 +218,8 @@ class MyLocationService: Service() {
         remoteConfig.setDefaultsAsync(defaultValue)
         remoteConfig.fetch(0)
         remoteConfig.fetchAndActivate()
-        rad = remoteConfig.getLong("minimum_version_supported")
+        rad = remoteConfig.getLong("reportSightRadius")
+        Log.d("debug_reportSightRadius" , rad.toString())
 
         locationClient = DefaultLocationClient(
             applicationContext,
@@ -222,6 +255,7 @@ class MyLocationService: Service() {
             .getLocationUpdates(500L)
             .catch { e -> e.printStackTrace() }
             .onEach { it ->
+                Log.d("DEBUG_LAT_LON_SERV","${it.longitude},${it.latitude}")
                 lrouteCoordinates.add(Point.fromLngLat(it.longitude,it.latitude))
                 prevLocation = if (prevLocation == Location("")){ it }else{
                     val dis = prevLocation.distanceTo(it)
@@ -230,7 +264,7 @@ class MyLocationService: Service() {
                 }
                 calcTrip(it)
                 isLocationChanged(it)
-                speed.value = (it.speed * 3.6).toInt()
+                speed.intValue = (it.speed * 3.6).toInt()
                 isChangeDetected.value = true
 
                 GeofenceBroadcastReceiver.GBRS.GeoId.value?.let {rId->
@@ -274,7 +308,6 @@ class MyLocationService: Service() {
                                         previousReportId = repo.reportId.toString()
                                     }
                                 }
-
                             }else{
                                 Log.d("DEBUG_PLAY_SOUND_ITR","hey2")
                                 if(previousReportId != repo.reportId){
@@ -308,13 +341,13 @@ class MyLocationService: Service() {
                         }
                         if (reportType == 6){
                             LSS.isEnteredPointToPointRoad.value = true
-                            LSS.roadMaxSpeed.value = repo.reportSpeedLimit ?: 0
+                            LSS.roadMaxSpeed.intValue = repo.reportSpeedLimit ?: 0
                         }
                     }
                 }
                 if (LSS.isEnteredPointToPointRoad.value){
                     listOfSpeeds.add((it.speed * 3.6).toInt())
-                    LSS.inP2PAverageSpeed.value = listOfSpeeds.average().toInt()
+                    LSS.inP2PAverageSpeed.intValue = listOfSpeeds.average().toInt()
                 }
 
                 val req = Request.Builder()
@@ -370,7 +403,10 @@ class MyLocationService: Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        LSSReset()
+        resetLSR()
         serviceScope.cancel()
+
     }
     @RequiresApi(Build.VERSION_CODES.S)
     private fun isHasSpeed(speed: Int) {

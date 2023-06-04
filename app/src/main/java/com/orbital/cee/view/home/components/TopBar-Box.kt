@@ -80,7 +80,7 @@ fun topBar(onClickMenu : () -> Unit, temp : Int?, onClickAds:()->Unit, isAdLoade
         modifier = Modifier
             .fillMaxWidth()
             .background(color = Color.Transparent)
-            .padding(horizontal = 12.dp, vertical = 15.dp),
+            .padding(horizontal = 24.dp, vertical = 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Box(modifier = Modifier
@@ -101,7 +101,7 @@ fun topBar(onClickMenu : () -> Unit, temp : Int?, onClickAds:()->Unit, isAdLoade
             }, indication = null, interactionSource = remember { MutableInteractionSource() })
                 .scale(scale.value), contentAlignment = Alignment.Center
         ) {
-            Icon(painter = painterResource(id = R.drawable.bg_btn_fab_my_location), contentDescription = "", tint = Color.Unspecified)
+            Icon(painter = painterResource(id = R.drawable.bg_btn_top_nav_menu), contentDescription = "", tint = Color.Unspecified)
             Icon(
                 painter = painterResource(id = R.drawable.ic_menu_drawer),
                 modifier = Modifier.size(28.dp),
@@ -172,7 +172,7 @@ fun topBar(onClickMenu : () -> Unit, temp : Int?, onClickAds:()->Unit, isAdLoade
                     Button(
                         onClick = onClickAds,
                         modifier = Modifier
-                            .size(54.dp)
+                            .size(58.dp)
                             .advancedShadow(
                                 color = Color.Black,
                                 alpha = 0.06f,

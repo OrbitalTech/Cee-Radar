@@ -120,7 +120,7 @@ fun OnBoardingPager(
 
     Box(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize(),horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
-            HorizontalPager(state = pagerState) { page ->
+            HorizontalPager(state = pagerState, count = item.size) { page ->
                 val composition by rememberLottieComposition(
                     LottieCompositionSpec
                         .RawRes(resId = item[page].image )
@@ -207,11 +207,11 @@ fun rememberPagerState(
     infiniteLoop: Boolean = false
 ): PagerState = rememberSaveable(saver = PagerState.Saver) {
     PagerState(
-        pageCount = pageCount,
+//        pageCount = pageCount,
         currentPage = initialPage,
-        currentPageOffset = initialPageOffset,
-        offscreenLimit = initialOffscreenLimit,
-        infiniteLoop = infiniteLoop
+//        currentPageOffset = initialPageOffset,
+//        offscreenLimit = initialOffscreenLimit,
+//        infiniteLoop = infiniteLoop
     )
 }
 

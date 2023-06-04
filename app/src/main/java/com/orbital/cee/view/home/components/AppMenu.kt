@@ -20,6 +20,7 @@ import com.orbital.cee.view.home.Menu.About
 import com.orbital.cee.view.home.Menu.General
 import com.orbital.cee.view.home.Menu.help
 import com.orbital.cee.view.home.Menu.privacy
+import com.orbital.cee.view.home.Menu.themes
 import com.orbital.cee.view.language.language
 import com.orbital.cee.view.setting.setting
 import com.orbital.cee.view.sound.sound
@@ -160,6 +161,21 @@ fun AppMenu(model : HomeViewModel = viewModel(), onCloseDrawer:() -> Unit){
                 )
             }) {
             setting(model) { navController.popBackStack() }
+        }
+        composable("themes",
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentScope.SlideDirection.Right,
+                    animationSpec = tween(700)
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentScope.SlideDirection.Left,
+                    animationSpec = tween(700)
+                )
+            }) {
+            themes() { navController.popBackStack() }
         }
     }
 

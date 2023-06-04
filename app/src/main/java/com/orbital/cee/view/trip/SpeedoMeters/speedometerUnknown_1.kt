@@ -2,6 +2,7 @@ package com.orbital.cee.view.trip.SpeedoMeters
 
 import android.util.Log
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -25,8 +26,7 @@ import kotlin.math.sin
 
 @Composable
 fun speedometerUnknown_1(value:Float){
-    val conf = LocalConfiguration.current
-    Canvas(modifier = Modifier.size(size = if(conf.screenWidthDp<350){220.dp}else{280.dp})) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
         val radius= size.width * .5f
         val angleDegreeDifference = (360f / 55f)
         (0..62).forEach {

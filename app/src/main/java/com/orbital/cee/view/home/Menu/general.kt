@@ -25,9 +25,12 @@ import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -90,6 +94,7 @@ fun General(model:HomeViewModel,onClickBack:()->Unit){
     val values by remember { mutableStateOf(valuesListt()) }
     val steps by remember { mutableStateOf(0) }
 
+    var rad = model.geofenceRadius.observeAsState()
 
     val valueRange: ClosedFloatingPointRange<Float>? by remember { mutableStateOf(null) }
     val onValueChangeFinished by remember { mutableStateOf({
@@ -97,6 +102,18 @@ fun General(model:HomeViewModel,onClickBack:()->Unit){
     }) }
     val tutorialEnabled by remember { mutableStateOf(false) }
     val interactionSource = remember {
+        MutableInteractionSource()
+    }
+
+
+
+    val dis_enabledValue by remember { mutableStateOf(false) }
+    val dis_values by remember { mutableStateOf(valuesListt()) }
+    val dis_steps by remember { mutableIntStateOf(0) }
+    var radd by remember { mutableFloatStateOf(0f) }
+    val dis_valueRange: ClosedFloatingPointRange<Float>? by remember { mutableStateOf(null) }
+    val dis_tutorialEnabled by remember { mutableStateOf(false) }
+    val dis_interactionSource = remember {
         MutableInteractionSource()
     }
 
@@ -123,10 +140,10 @@ fun General(model:HomeViewModel,onClickBack:()->Unit){
                 .padding(vertical = 25.dp),
             contentAlignment = Alignment.BottomCenter
         ) {
-            Text(text = "General Setting", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 20.sp)
+            Text(text = "General Setting", fontWeight = FontWeight.SemiBold, color = Color(0xFF171729), fontSize = 18.sp)
             Box(modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 10.dp), contentAlignment = Alignment.BottomStart){
+                .padding(horizontal = 24.dp), contentAlignment = Alignment.BottomStart){
                 Box(modifier = Modifier.size(25.dp), contentAlignment = Alignment.Center){
                     Icon(modifier = Modifier
                         .clickable(
@@ -171,7 +188,7 @@ fun General(model:HomeViewModel,onClickBack:()->Unit){
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Enable prevent sleep.")
+                    Text(text = "Screen Timeout.")
                     Box(modifier = Modifier
                         .width(73.dp)
                         .height(47.dp)
@@ -188,36 +205,151 @@ fun General(model:HomeViewModel,onClickBack:()->Unit){
                 AnimatedVisibility(visible = _isSleepModeDisabled.value, enter = fadeIn(), exit = fadeOut()) {
                     Column() {
                         Spacer(modifier = Modifier.height(20.dp))
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                            SunriseSlider(
+                                value = sleepTimeout.value,
+                                onValueChange = { float: Float ->
+                                    sleepTimeout.value = float
+                                },
+                                valueRangeParam = valueRange,
+                                values = values,
+                                steps = steps,
+                                interactionSource = interactionSource,
+                                enabled = enabledValue,
+                                tutorialEnabled = tutorialEnabled,
+                                onValueChangeFinished = {
+                                    model.changeScreenStatus(time = sleepTimeout.value.toInt())
+                                    model.retrieveIsPreventScreenSleep()
+                                    _isChangeSetting.value = true
+                                },
+                                colors = sunriseSliderColorsDefaultt(),
+                                isRtl = false
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "1h",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.W500,
+                                    color = if (sleepTimeout.value.toInt() == 200) {
+                                        Color(0XFF495CE8)
+                                    } else {
+                                        Color(0xFF848484)
+                                    }
+                                )
+                                Text(
+                                    text = "3h",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.W500,
+                                    color = if (sleepTimeout.value.toInt() == 300) {
+                                        Color(0XFF495CE8)
+                                    } else {
+                                        Color(0xFF848484)
+                                    }
+                                )
+                                Text(
+                                    text = "4h",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.W500,
+                                    color = if (sleepTimeout.value.toInt() == 400) {
+                                        Color(0XFF495CE8)
+                                    } else {
+                                        Color(0xFF848484)
+                                    }
+                                )
+                                Text(
+                                    text = "5h",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.W500,
+                                    color = if (sleepTimeout.value.toInt() == 500) {
+                                        Color(0XFF495CE8)
+                                    } else {
+                                        Color(0xFF848484)
+                                    }
+                                )
+                                Text(
+                                    text = "6h",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.W500,
+                                    color = if (sleepTimeout.value.toInt() == 600) {
+                                        Color(0XFF495CE8)
+                                    } else {
+                                        Color(0xFF848484)
+                                    }
+                                )
+                                Text(
+                                    text = "7h",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.W500,
+                                    color = if (sleepTimeout.value.toInt() == 699) {
+                                        Color(0XFF495CE8)
+                                    } else {
+                                        Color(0xFF848484)
+                                    }
+                                )
+                                Text(
+                                    text = "8h",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.W500,
+                                    color = if (sleepTimeout.value.toInt() == 800) {
+                                        Color(0XFF495CE8)
+                                    } else {
+                                        Color(0xFF848484)
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                }
+                Spacer(modifier = Modifier.height(15.dp))
+                Column(modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount -> }
+                    }) {
+                    Text(text = stringResource(id = R.string.lbl_appMenu_alertmeFrom))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    LaunchedEffect(Unit){
+                        radd = rad.value!!.toFloat()
+                    }
+                    
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                         SunriseSlider(
-                            value = sleepTimeout.value,
+                            value = radd,
                             onValueChange = { float: Float ->
-                                sleepTimeout.value = float
+                                radd = float
+//                        onValueChangeFinished()
+//                        vlue = float
                             },
-                            valueRangeParam = valueRange,
-                            values = values,
-                            steps = steps,
-                            interactionSource = interactionSource,
-                            enabled = enabledValue,
-                            tutorialEnabled = tutorialEnabled,
+                            valueRangeParam = dis_valueRange,
+                            values = dis_values,
+                            steps = dis_steps,
+                            interactionSource = dis_interactionSource,
+                            enabled = dis_enabledValue,
+                            tutorialEnabled = dis_tutorialEnabled,
                             onValueChangeFinished = {
-                                model.changeScreenStatus(time = sleepTimeout.value.toInt())
-                                model.retrieveIsPreventScreenSleep()
-                                _isChangeSetting.value = true
+                                model.saveGeofenceRadius(radd.toInt())
                             },
                             colors = sunriseSliderColorsDefaultt(),
                             isRtl = false
                         )
+
                         Spacer(modifier = Modifier.height(10.dp))
-                        Row(modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(text = "1h", fontSize = 10.sp, fontWeight = FontWeight.W500, color =if(sleepTimeout.value.toInt() == 200){Color(0XFF495CE8)}else{Color(0xFF848484)} )
-                            Text(text = "3h", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(sleepTimeout.value.toInt() == 300){Color(0XFF495CE8)}else{Color(0xFF848484)})
-                            Text(text = "4h", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(sleepTimeout.value.toInt() == 400){Color(0XFF495CE8)}else{Color(0xFF848484)})
-                            Text(text = "5h", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(sleepTimeout.value.toInt() == 500){Color(0XFF495CE8)}else{Color(0xFF848484)})
-                            Text(text = "6h", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(sleepTimeout.value.toInt() == 600){Color(0XFF495CE8)}else{Color(0xFF848484)})
-                            Text(text = "7h", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(sleepTimeout.value.toInt() == 699){Color(0XFF495CE8)}else{Color(0xFF848484)})
-                            Text(text = "8h", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(sleepTimeout.value.toInt() == 800){Color(0XFF495CE8)}else{Color(0xFF848484)})
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(text = "200m", fontSize = 10.sp, fontWeight = FontWeight.W500, color =if(model.geofenceRadius.value == 200){Color(0XFF495CE8)}else{Color(0xFF848484)} )
+                            Text(text = "300m", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(model.geofenceRadius.value == 300){Color(0XFF495CE8)}else{Color(0xFF848484)})
+                            Text(text = "400m", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(model.geofenceRadius.value == 400){Color(0XFF495CE8)}else{Color(0xFF848484)})
+                            Text(text = "500m", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(model.geofenceRadius.value == 500){Color(0XFF495CE8)}else{Color(0xFF848484)})
+                            Text(text = "600m", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(model.geofenceRadius.value == 600){Color(0XFF495CE8)}else{Color(0xFF848484)})
+                            Text(text = "700m", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(model.geofenceRadius.value == 699){Color(0XFF495CE8)}else{Color(0xFF848484)})
+                            Text(text = "800m", fontSize = 10.sp, fontWeight = FontWeight.W500, color = if(model.geofenceRadius.value == 800){Color(0XFF495CE8)}else{Color(0xFF848484)})
                         }
                     }
 

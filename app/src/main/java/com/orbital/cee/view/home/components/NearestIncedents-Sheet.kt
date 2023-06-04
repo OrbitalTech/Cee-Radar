@@ -212,7 +212,7 @@ fun SheetNearestIncident(list: MutableIterator<NewReport>,currentLocation : Loca
 @ExperimentalPagerApi
 @Composable
 fun TabLayout(list: MutableIterator<NewReport>,currentLocation : Location,model: HomeViewModel,onClickIncidents: (geoPoint:GeoPoint) -> Unit) {
-    val pagerState = rememberPagerState(pageCount = 2)
+    val pagerState = rememberPagerState(initialPage = 1)
     val configuration = LocalConfiguration.current
 
     Box(modifier = Modifier
@@ -314,7 +314,7 @@ fun Tabs(pagerState: PagerState,userType : Int?) {
 @ExperimentalPagerApi
 @Composable
 fun TabsContent(pagerState: PagerState,model:HomeViewModel, list: MutableIterator<NewReport>,currentLocation : Location,onClickIncidents: (geoPoint:GeoPoint) -> Unit) {
-    HorizontalPager(state = pagerState, dragEnabled = model.userType.value == 2) {
+    HorizontalPager(state = pagerState, count = 2) {
             page ->
         when (page) {
             0 -> SheetNearestIncident(list,onClickIncidents = onClickIncidents,currentLocation = currentLocation)

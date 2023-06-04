@@ -291,16 +291,18 @@ fun Speed(
                             Modifier
                                 .size((conf.screenWidthDp - 80).dp)
                                 .border(
-                                    width = 1.dp,
-                                    color = Color(0x14000000),
+                                    width = 0.dp,
+                                    color = Color(0x14FFFFFF),
                                     shape = CircleShape
                                 )){
                                     Box(
                                         Modifier
                                             .padding(18.dp)
                                     ) {
-                                        speedometerHITEX(value = 0.6f)
-                                        SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull(),hitex = true)
+//                                        ceeOMeter(value = progressAnimationValue)
+//                                        speedometerHITEX(value = progressAnimationValue)
+                                        speedometerUnknown_1(progressAnimationValue)
+                                        SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull(),hitex = false)
                                     }
                             }
                         }

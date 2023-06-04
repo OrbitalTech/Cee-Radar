@@ -2,6 +2,7 @@ package com.orbital.cee.view.trip.SpeedoMeters
 
 import android.util.Log
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -25,9 +26,8 @@ import kotlin.math.sin
 fun speedometerUnknown(value:Float){
     val conf = LocalConfiguration.current
     Canvas(
-        Modifier.size(size = if(conf.screenWidthDp<350){220.dp}else{280.dp})
+        Modifier.fillMaxSize()
     ) {
-        Log.d("SIZEELER","wid: "+size.width.toString()+" height: "+size.height.toString())
         drawArc(
             color = Color(0XFFECEEFD),
             127.7f,

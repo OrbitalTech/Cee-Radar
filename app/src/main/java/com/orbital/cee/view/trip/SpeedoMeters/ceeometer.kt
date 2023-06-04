@@ -2,6 +2,7 @@ package com.orbital.cee.view.trip.SpeedoMeters
 
 import android.util.Log
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -21,7 +22,7 @@ import com.orbital.cee.core.GeofenceBroadcastReceiver
 fun ceeOMeter(value:Float){
     val conf = LocalConfiguration.current
     Log.d("ScreenDebugDP",conf.screenWidthDp.toString())
-    Canvas(modifier = Modifier.size(size = if(conf.screenWidthDp<350){220.dp}else{300.dp})) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
         drawArc(
             brush = Brush.linearGradient(
                 colors = listOf(

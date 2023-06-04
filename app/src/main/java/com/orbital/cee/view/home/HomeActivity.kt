@@ -206,7 +206,7 @@ class HomeActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks //
     private lateinit var locationRequest: LocationRequest
     private val df = DecimalFormat("#.##")
 //    private var showTripDialog = mutableStateOf(false)
-    private var alertCount = mutableStateOf(0)
+    private var alertCount = mutableIntStateOf(0)
     private var distance = mutableStateOf(0f)
     private var maxSpeed = mutableStateOf(0)
 //    private var lLocation = Location("")
@@ -214,7 +214,7 @@ class HomeActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks //
     var mRewardedAd : RewardedAd ? = null
     private var mInterstitialAd: InterstitialAd? = null
     var isPurchasedAdRemove = mutableStateOf(false)
-
+    private var lLocation = Location("")
 
     var isInsideP2PRoad = mutableStateOf(false)
     var langCode = mutableStateOf("en")
@@ -237,12 +237,12 @@ class HomeActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks //
             SoundSta.value = Type
         }
     }
-//    var isDone : Boolean by Delegates.observable(false){
-//            _, _, newValue ->
-//        if (newValue){
-//            fusedLocationProviderClient.removeLocationUpdates(locationCallback)
-//        }
-//    }
+    var isDone : Boolean by Delegates.observable(false){
+            _, _, newValue ->
+        if (newValue){
+            fusedLocationProviderClient.removeLocationUpdates(locationCallback)
+        }
+    }
 //    fun calcDis(cloc: Location) {
 //        if (distanceLoc == null) {
 //            distanceLoc = cloc
@@ -309,17 +309,17 @@ class HomeActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks //
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         fix()
-//        locationCallback = object : LocationCallback(){
-//            override fun onLocationResult(p0: LocationResult) {
-//                super.onLocationResult(p0)
-//                if (!isDone){
-//                    p0.lastLocation?.let {
-//                        model.lastLocation.value = it
-//                        speed(it.speed)
-//                    }
-//                }
-//            }
-//        }
+        locationCallback = object : LocationCallback(){
+            override fun onLocationResult(p0: LocationResult) {
+                super.onLocationResult(p0)
+                if (!isDone){
+                    p0.lastLocation?.let {
+                        model.lastLocation.value = it
+                        isLocationChanged(it)
+                    }
+                }
+            }
+        }
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
             PowerManager.SCREEN_DIM_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE,
@@ -370,40 +370,10 @@ class HomeActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks //
         if (Build.VERSION.SDK_INT >= 25) {
             Shortcuts.setUp(applicationContext)
         }
-//        createLocationRequest()
+        createLocationRequest()
 
         setContent {
-            val adRequest = AdRequest.Builder().build()
-            InterstitialAd.load(this,resources.getString(R.string.interstitial_ad_three_stop_id), adRequest, object : InterstitialAdLoadCallback() {
-                override fun onAdFailedToLoad(adError: LoadAdError) {
-                    mInterstitialAd = null
-                }
-                override fun onAdLoaded(interstitialAd: InterstitialAd) {
-                    mInterstitialAd = interstitialAd
-                }
-            })
-            RewardedAd.load(this,resources.getString(R.string.remove_ads_rewarded_video_id),adRequest,object : RewardedAdLoadCallback(){
-                override fun onAdFailedToLoad(adError: LoadAdError) {
-                    mRewardedAd = null
-                }
-                override fun onAdLoaded(rewardedAd: RewardedAd) {
-                    mRewardedAd = rewardedAd
-                }
-            })
-            mRewardedAd?.fullScreenContentCallback = object: FullScreenContentCallback() {
-                override fun onAdClicked() {}
-                override fun onAdDismissedFullScreenContent() {
-                    mRewardedAd = null
-                }
-                override fun onAdImpression() {}
-                override fun onAdShowedFullScreenContent() {}
-            }
-            if (stopCount.value == 4){
-                stopCount.value = 0
-                if (!isPurchasedAdRemove.value){
-                    mInterstitialAd?.show(this)
-                }
-            }
+
             val soundSta = model.soundStatus.observeAsState()
             soundSta.value?.let { Singlt.set(it) }
             CEETheme(darkTheme = model.isDarkMode.value,langCode = langCode.value) {
@@ -445,6 +415,19 @@ class HomeActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks //
                         )
 
                     }
+                }
+            }
+        }
+    }
+    private fun isLocationChanged(location: Location?) {
+        if (location != null){
+            if (lLocation == Location("")){
+                model.getReportsAndAddGeofences()
+                lLocation = location
+            }else{
+                if (location.distanceTo(lLocation) > (25*1000)-500){
+                    model.getReportsAndAddGeofences()
+                    lLocation = location
                 }
             }
         }
@@ -497,7 +480,7 @@ class HomeActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks //
     override fun onResume() {
         super.onResume()
         inProgressUpdate()
-//        startLocationUpdate()
+        startLocationUpdate()
         registerReceiver(transitionBroadcastReceiver, IntentFilter(TRANSITIONS_RECEIVER_ACTION))
 
 //        sensorManager?.getDefaultSensor(Sensor.TYPE_ORIENTATION)?.also { orientationSensor ->
@@ -609,31 +592,31 @@ class HomeActivity : ComponentActivity(), EasyPermissions.PermissionCallbacks //
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
         Toast.makeText(this,"Please Set Background Permission.",Toast.LENGTH_LONG).show()
     }
-//    private fun createLocationRequest() {
-//        locationRequest = LocationRequest.create().apply {
-//            interval = 4000
-//            fastestInterval = 2500
-//            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-//            maxWaitTime = 1000
-//        }
-//    }
-//    private fun startLocationUpdate() {
-//        if (ActivityCompat.checkSelfPermission(
-//                this,
-//                Manifest.permission.ACCESS_FINE_LOCATION
-//            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-//                this,
-//                Manifest.permission.ACCESS_COARSE_LOCATION
-//            ) != PackageManager.PERMISSION_GRANTED
-//        ) {
-//            return
-//        }
-//        fusedLocationProviderClient.requestLocationUpdates(
-//            locationRequest,
-//            locationCallback,
-//            Looper.myLooper()
-//        )
-//    }
+    private fun createLocationRequest() {
+        locationRequest = LocationRequest.create().apply {
+            interval = 40000
+            fastestInterval = 15000
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+            maxWaitTime = 10000
+        }
+    }
+    private fun startLocationUpdate() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        fusedLocationProviderClient.requestLocationUpdates(
+            locationRequest,
+            locationCallback,
+            Looper.myLooper()
+        )
+    }
 //    private fun getPerimeterFeature(center:Point, radiusInKilometers: Double = .05, sides: Int = 64): Feature {
 //        val positions = mutableListOf<Point>()
 //        val latitude = center.latitude()
