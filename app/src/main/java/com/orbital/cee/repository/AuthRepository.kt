@@ -28,7 +28,7 @@ interface Abstract {
     suspend fun saveStatistics(uStatistics : UserStatistics)
     suspend fun retrieveStatistics(): Flow<UserStatistics>
     suspend fun debugModeSave(isDebugMode : Boolean)
-    suspend fun saveAppSetting(isEnable: Boolean?,time : Int?)
+    suspend fun saveAppSetting(isEnable: Boolean?,time : Float?)
     suspend fun retrieveAppSetting(): Flow<AppSetting>
     suspend fun retrieveDebugMode(): Flow<Boolean>
     suspend fun retrieveUserActivityLog() : Flow<UserActivityLog>

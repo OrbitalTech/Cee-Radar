@@ -9,13 +9,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -73,7 +73,7 @@ fun countrySearchView(state: ModalBottomSheetState): String {
                             searchValue = ""
                         }) {
                             Icon(
-                                imageVector = Icons.Rounded.Cancel,
+                                painter = painterResource(id = R.drawable.ic_close),
                                 tint = Color.Black.copy(0.3f),
                                 contentDescription = "Clear icon"
                             )

@@ -25,10 +25,8 @@ import com.orbital.cee.R
 fun ReportIconWithSpeedLimit(icon:Int,speedLimit:Int?,color: Color){
     Box(modifier = Modifier.size(60.dp)){
         Box(modifier = Modifier
-            .width(52.dp)
-            .height(56.dp)
-            .padding(top = 5.dp)
-            .background(color = color, shape = RoundedCornerShape(20.dp)), contentAlignment = Alignment.Center){
+            .padding(top = 5.dp), contentAlignment = Alignment.Center){
+            Icon(painter = painterResource(id = R.drawable.bg_btn_place_cam_fab_main_scr), contentDescription = "", tint = color)
             Icon(modifier = Modifier.size(28.dp),painter = painterResource(id = icon), tint = Color.White, contentDescription = "")
         }
         speedLimit?.let {

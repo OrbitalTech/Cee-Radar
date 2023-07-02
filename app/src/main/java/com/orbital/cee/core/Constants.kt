@@ -6,6 +6,8 @@ object Constants {
     const val PERMISSION_BACKGROUND_LOCATION_REQUEST_CODE = 2
 
     const val NOTIFICATION_CHANNEL_ID = "geofence_transition_id"
+    const val NOTIFICATION_SERVER_CHANNEL_ID = "server_notification_channel_id"
+    const val NOTIFICATION_SERVER_CHANNEL_NAME = "server_notification"
     const val NOTIFICATION_CHANNEL_NAME = "geofence_notification"
     const val NOTIFICATION_ID = 3
 
@@ -23,13 +25,15 @@ object Constants {
     const val DEBUG_MODE_PREF_KEY = "debugModePrefKey"
 
     const val SCREEN_SLEEP_MODE_PREF_KEY = "screenSleepModePrefKey"
-    const val SCREEN_SLEEP_TIMEOUT_PREF_KEY = "ScreenSleepTimeoutPrefKey"
+    const val SCREEN_SLEEP_TIMEOUT_PREF_KEY = "ScreenSleepTimeoutPrefKeyNew"
 
     const val DB_REF_REPORT_DEBUG = "ReportsDebug"
     const val DB_REF_ARCHIVE_REPORT = "ArchiveReports"
     const val DB_REF_ALERTED = "Alerted"
     const val DB_REF_USER = "Users"
     const val LANGUAGE_CODE = "lang_code"
+    const val SPEEDOMETERID = "speedometerId"
+    const val CURSORID = "cursorId"
     const val CIRCLE_RADIUS_M = 250f
     const val GEOFENCE_RADIUS_M = "Geofence_radius"
     const val REPORT_COUNTER_PER_ONE_HOUR = "reportCountPerOneHours"

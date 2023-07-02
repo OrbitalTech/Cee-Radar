@@ -1,15 +1,16 @@
 package com.orbital.cee.view.trip
 
-import android.os.Build
-import android.view.View
-import androidx.annotation.RequiresApi
+import android.content.Intent
+import android.net.Uri
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,15 +31,11 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.LatLngBounds
-import com.google.android.gms.maps.model.Polyline
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.ktx.storage
+import com.google.gson.Gson
 import com.mapbox.geojson.*
-import com.mapbox.geojson.BoundingBox.fromLngLats
-import com.mapbox.geojson.LineString.fromLngLats
-import com.mapbox.geojson.MultiLineString.fromLngLats
-import com.mapbox.geojson.MultiPoint.fromLngLats
 import com.mapbox.maps.*
 import com.mapbox.maps.extension.style.layers.addLayer
 import com.mapbox.maps.extension.style.layers.generated.lineLayer
@@ -47,38 +44,21 @@ import com.mapbox.maps.extension.style.layers.properties.generated.LineJoin
 import com.mapbox.maps.extension.style.sources.addSource
 import com.mapbox.maps.extension.style.sources.generated.geoJsonSource
 import com.mapbox.maps.plugin.compass.compass
-import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.scalebar.scalebar
 import com.mapbox.maps.viewannotation.viewAnnotationOptions
-//import com.mapbox.maps.extension.style.layers.addLayer
-//import com.mapbox.maps.extension.style.layers.generated.lineLayer
-//import com.mapbox.maps.extension.style.layers.properties.generated.LineCap
-//import com.mapbox.maps.extension.style.layers.properties.generated.LineJoin
-//import com.mapbox.maps.extension.style.sources.addSource
-//import com.mapbox.maps.extension.style.sources.generated.geoJsonSource
-//import com.mapbox.maps.plugin.animation.easeTo
-//import com.mapbox.maps.plugin.animation.flyTo
-//import com.mapbox.maps.plugin.annotation.AnnotationConfig
-//import com.mapbox.maps.plugin.annotation.annotations
-//import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
-//import com.mapbox.maps.plugin.compass.compass
-//import com.mapbox.maps.plugin.gestures.gestures
-//import com.mapbox.maps.plugin.logo.logo
-//import com.mapbox.maps.plugin.scalebar.scalebar
-//import com.mapbox.maps.viewannotation.viewAnnotationOptions
 import com.orbital.cee.R
 import com.orbital.cee.core.Constants
-import com.orbital.cee.core.Permissions
 import com.orbital.cee.model.Trip
+import com.orbital.cee.ui.theme.blurple
+import com.orbital.cee.ui.theme.white
 import com.orbital.cee.utils.MetricsUtils
 import com.orbital.cee.utils.MetricsUtils.Companion.getAddress
-import com.orbital.cee.view.home.components.CustomModal
+import com.orbital.cee.utils.MetricsUtils.Companion.getRandomString
 import com.orbital.cee.view.home.components.showCustomDialog
-import com.orbital.cee.view.home.components.showRegisterDialog
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.File
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -90,13 +70,19 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
     val sdff = SimpleDateFormat("hh:mm", Locale.US)
     val sdfff = SimpleDateFormat("EEEE", Locale.US)
     val df = DecimalFormat("#.##")
+    val storage = Firebase.storage
+    val auth = Firebase.auth
     val context = LocalContext.current
-    var isShowTripDeleteConfirmationDialog = remember { mutableStateOf(false) }
+    val isShowTripDeleteConfirmationDialog = remember { mutableStateOf(false) }
     val rotate = if (LocalConfiguration.current.layoutDirection == LayoutDirection.Rtl.ordinal){180f}else{0f}
     df.roundingMode = RoundingMode.DOWN
+    val coroutineScope = rememberCoroutineScope()
+    val storageRef = storage.reference
+    val uniqueId = getRandomString(8)
+    val fileRef = storageRef.child("SharedTrips/${auth.currentUser?.uid}/$uniqueId.trip")
+
 
 //    var mapView by remember { mutableStateOf<MapView?>(null) }
-
 //    DisposableEffect(Unit) {
 //        val newMapView =
 //        mapView = newMapView
@@ -104,7 +90,6 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
 //            mapView?.onDestroy()
 //        }
 //    }
-
     // Render the MapView in the Composable
 
 
@@ -121,15 +106,16 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(85.dp)
+                .height(95.dp)
                 .border(
                     width = 1.dp,
                     color = Color(0XFFE4E4E4),
-                ),
-            contentAlignment = Alignment.Center
+                )
+                .padding(bottom = 8.dp),
+            contentAlignment = Alignment.BottomCenter
         ) {
             Text(text = "${stringResource(R.string.lbl_trip_history_detail_appBar_title)} ${trip.startTime?.let { sdf.format(it) }}", maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart){
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart){
                 IconButton(onClick = {
                     onClickBack.invoke()
                     //mapView.onDestroy()
@@ -157,20 +143,21 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Box(modifier = Modifier
                         .fillMaxWidth()
+                        .height(240.dp)
                         .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
                         .border(
                             width = 2.dp,
                             color = Color(0XFFE4E4E4),
                             shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)
-                        )) {
+                        ), contentAlignment = Alignment.TopStart) {
                         AndroidView(modifier = Modifier
-                            .height(240.dp)
+                            .fillMaxSize()
                             .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)),factory = {
                             MapView(context).apply {
                                 getMapboxMap().loadStyleUri("mapbox://styles/orbital-cee/cl5wwmzcw000814qoaa1zkqrw") {sty ->
                                     trip.listOfLatLon.let { points ->
                                         if (points.size > 1){
-                                            val polygon = Polygon.fromLngLats(listOf(points))
+//                                            val polygon = Polygon.fromLngLats(listOf(points))
 //                                            val cameraPosition = getMapboxMap().cameraForGeometry(polygon,padding =  EdgeInsets(0.0, 0.0, 0.0, 0.0))
 //                                            val cameraPosition = getMapboxMap().cameraForCoordinateBounds(bounds = CoordinateBounds(points[0],points[trip.listOfLatLon.size - 1],true))
 //                                            val cameraPosition = getMapboxMap().cameraForCoordinates(points)
@@ -217,6 +204,57 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
 //                                gestures.pitchEnabled = false
                             }
                         })
+                        Box(modifier = Modifier
+                            .padding(12.dp)
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() },
+                                onClick = {
+                                    val a = Gson().toJson(trip)
+                                    val filePath = context.applicationContext.filesDir
+                                    val cfile = File(filePath, "temp_trip.json")
+                                    cfile.writeText(a)
+                                    coroutineScope.launch {
+                                        delay(2000)
+
+                                        val file = Uri.fromFile(File(filePath, "temp_trip.json"))
+                                        fileRef
+                                            .putFile(file)
+                                            .addOnSuccessListener {
+                                                val myUrl = "https://cee-platform-87d21.web.app/trip/${auth.currentUser?.uid}/${uniqueId}.trip"
+                                                val shareIntent = Intent()
+                                                shareIntent.action = Intent.ACTION_SEND
+                                                shareIntent.type="text/plain"
+                                                shareIntent.putExtra(Intent.EXTRA_TEXT, myUrl)
+                                                shareIntent.putExtra(Intent.EXTRA_TITLE, "enjoy sharing your trips with your friends")
+                                                context.startActivity(Intent.createChooser(shareIntent,myUrl))
+                                                fileRef.downloadUrl
+                                                    .addOnSuccessListener { uri ->
+                                                        val downloadUrl = uri.toString()
+                                                        Toast
+                                                            .makeText(
+                                                                context,
+                                                                "Suceess",
+                                                                Toast.LENGTH_LONG
+                                                            )
+                                                            .show()
+                                                        Log.d("DEBUG_TRIP_SHARE_URL", downloadUrl)
+                                                    }
+                                                    .addOnFailureListener {
+                                                        // Handle any errors while getting the download URL
+                                                    }
+                                            }
+                                            .addOnFailureListener {
+                                                // Handle any errors during file upload
+                                            }
+
+                                    }
+
+
+                                }), contentAlignment = Alignment.Center){
+                            Icon(modifier = Modifier.size(56.dp),painter = painterResource(id = R.drawable.bg_btn_top_nav_menu), contentDescription = "", tint = white)
+                            Icon(painter = painterResource(id = R.drawable.ic_share), contentDescription ="" , tint = blurple)
+                        }
 
                     }
                     Box(modifier = Modifier
@@ -254,7 +292,7 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
                                     Text(text =if(trip.listOfLatLon.size>1){ getAddress(trip.listOfLatLon[0].latitude(),trip.listOfLatLon[0].longitude(),context)}else{"unknown"},maxLines=2, modifier = Modifier
                                         .fillMaxWidth(0.9f)
                                         .height(35.dp))
-                                    Text(text = if(trip.listOfLatLon.size>1){ getAddress(trip.listOfLatLon[0].latitude(),trip.listOfLatLon[0].longitude(),context)}else{"unknown"},maxLines=2, modifier = Modifier
+                                    Text(text = if(trip.listOfLatLon.size>1){ getAddress(trip.listOfLatLon[trip.listOfLatLon.size-1].latitude(),trip.listOfLatLon[trip.listOfLatLon.size-1].longitude(),context)}else{"unknown"},maxLines=2, modifier = Modifier
                                         .fillMaxWidth(0.9f)
                                         .height(35.dp))
                                 }
@@ -346,10 +384,5 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
                 title = stringResource(R.string.lbl_trip_history_detail_alert_description)
             )
         }
-
     }
-}
-@RequiresApi(Build.VERSION_CODES.S)
-private fun zoomCamera(){
-
 }

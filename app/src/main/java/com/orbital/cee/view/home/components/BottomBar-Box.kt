@@ -281,7 +281,7 @@ fun bottomBar(model:HomeViewModel,
                     ) {
                         Icon(
                             tint = Color(0xFF495CE8),
-                            painter = if(soundSta.value == 1) painterResource(id = R.drawable.ic_sound_on) else if (soundSta.value == 2) painterResource(id = R.drawable.ic_sound_vibrate) else painterResource(id = R.drawable.ic_sound_off)  ,
+                            painter = if(soundSta.value == 1) painterResource(id = R.drawable.volume_high) else if (soundSta.value == 2) painterResource(id = R.drawable.ic_sound_vibrate) else painterResource(id = R.drawable.ic_volume_slash)  ,
                             contentDescription = "",
                             modifier = Modifier.size(25.dp)
                         )

@@ -21,3 +21,7 @@ data class SingleCustomReport(
     var feedbackLikeCount : Int = 0,
     var feedbackDisLikeCount : Int = 0
 )
+data class UserNameAndID(
+    var userId : String = "",
+    var username :String =  "",
+)

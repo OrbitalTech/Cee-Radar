@@ -64,18 +64,11 @@ fun Authentication(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val countries = remember { countryList(context) }
-    //Log.d("COUNTRYCODE",detectSIMCountry(context).toString())
-    //readCountryCode()
 
     val composition by rememberLottieComposition(
         LottieCompositionSpec
             .RawRes(R.raw.lottie_three_dot_loading)
     )
-    val composition1 by rememberLottieComposition(
-        LottieCompositionSpec
-            .RawRes(R.raw.lottie_signup_cee)
-    )
-
     val progress by animateLottieCompositionAsState(
         composition,
         iterations = LottieConstants.IterateForever,
@@ -83,6 +76,12 @@ fun Authentication(
         speed = 1f,
         restartOnPlay = false
     )
+    val composition1 by rememberLottieComposition(
+        LottieCompositionSpec
+            .RawRes(R.raw.lottie_signup_cee)
+    )
+
+
     val progress1 by animateLottieCompositionAsState(
         composition1,
         iterations = LottieConstants.IterateForever,
@@ -152,14 +151,7 @@ fun Authentication(
                             progress1,
                             modifier = Modifier.size(150.dp)
                         )
-//                        Icon(painter = painterResource(id = R.drawable.ic_cee_select_lang), tint = Color.Unspecified, contentDescription ="" )
-                        //CeeAwait(color = Color(0xFF495CE8),bColor = Color.White, delay = 3500, duration = 1200)
                     }
-//                    Icon(
-//
-//                        painter = painterResource(id = R.drawable.cee_text),
-//                        contentDescription = "cee",
-//                    )
                     Spacer(modifier = Modifier.height(25.dp))
                     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                         Row(modifier = Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -175,8 +167,6 @@ fun Authentication(
                                     horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Row{
                                         Text(text = selectedCountry!!.dialCode, color = Color.Black)
-//                                        Spacer(modifier = Modifier.width(3.dp))
-//                                        Text(text = localeToEmoji(selectedCountry!!.code))
                                     }
                                     Icon(
                                         painterResource(id = R.drawable.ic_arrow_dropdown),
@@ -228,10 +218,9 @@ fun Authentication(
 
                             }else{
                                 coroutineScope.launch {
-                                    //var phone = selectedCountry!!.dialCode + phoneNumber.value
                                     viewModel.sendOTP(selectedCountry!!.dialCode,phoneNumber.value, context).collect{
                                         if (it.isSuccess){
-                                            navController.navigate(Screen.VerifyOTP.route + "/${selectedCountry!!.dialCode}/${phoneNumber.value}")
+                                            navController.navigate("verifyOtp/${selectedCountry!!.dialCode}/${phoneNumber.value}")
                                             isLoading = false
                                         }else{
                                             errorMessage = it.serverMessage

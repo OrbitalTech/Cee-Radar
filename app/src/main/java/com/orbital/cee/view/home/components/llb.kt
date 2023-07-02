@@ -20,12 +20,19 @@ import kotlinx.coroutines.delay
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.platform.LocalContext
+import com.orbital.cee.ui.theme.red
+import com.orbital.cee.utils.Utils.dpToPx
 
 //@RequiresApi(Build.VERSION_CODES.O)
 //@Composable
@@ -214,6 +221,35 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 //
 //}
 
+@Preview
+@Composable
+fun innerShad(){
+    val context = LocalContext.current
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color(0x03FFFFFF),
+                    Color(0x0DFFFFFF),
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFFFFFF),
+                    Color(0xFFFFFFFF),
+
+                ),
+                center = Offset(size.width/2, size.height/2.754f),
+                tileMode = TileMode.Mirror,
+                radius = 550f
+            ),
+            center = Offset(size.width/2, size.height/2.754f),
+            radius= 1400f,
+        )
+    }
+}
+
 @Composable
 private fun BorderProgressBar() {
 
@@ -242,7 +278,7 @@ private fun BorderProgressBar() {
         modifier = Modifier
             .fillMaxWidth()
             .height(40.dp)
-            .padding( horizontal = 20.dp),
+            .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -264,36 +300,147 @@ private fun BorderProgressBar() {
     }
 }
 
-@Preview
+
 @Composable
 fun HorizontalProgress(percent : Float = 0.6f){
-    Column(
-        modifier = Modifier.height(14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+Box(modifier = Modifier.size(400.dp), contentAlignment = Alignment.Center){
+    Box(
+        modifier = Modifier
+            .size(200.dp)
+            .background(Color.Red, shape = CustomShape(curveOffset = 20.dp))
     ) {
-//        TripInfoContainer(cornerRadius = 8f, tabWidth =250f){
-//        }
-
-        Canvas(modifier = Modifier.fillMaxHeight().fillMaxWidth(0.6f)) {
-            drawLine(
-                color = Color(0XFFECEEFD),
-                Offset(0.0f,5.0f),
-                Offset(size.width,5f),
-                strokeWidth = 14.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-            drawLine(
-                color = Color(0xFF3F51B5),
-                Offset(0.0f,5.0f),
-                Offset(size.width * percent,5f),
-                strokeWidth = 14.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-        }
+        // Content of the box
     }
+}
+
+
+
+//    Column(
+//        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
+//    ) {
+////        TripInfoContainer(cornerRadius = 8f, tabWidth =250f){
+////        }
+//
+//        Canvas(modifier = Modifier.size(300.dp,300.dp)) {
+//            val w = size.width
+//            val h = size.height
+//            val topStart= 12f
+//            val topEnd= 12f
+//            val bottomEnd= 12f
+//            val bottomStart= 12f
+//            val path = Path().apply {
+////                moveTo(w,h)
+//                arcTo(
+//                    Rect(
+//                        left = 0f,
+//                        top = 0f,
+//                        right = size.width,
+//                        bottom = size.height,),
+//                    startAngleDegrees = 45f,
+//                    sweepAngleDegrees = 120f,
+//                    forceMoveTo = false
+//                )
+//                close()
+//            }
+//            drawPath(path, color = red)
+//
+////            drawLine(
+////                color = Color(0XFFECEEFD),
+////                Offset(0.0f,5.0f),
+////                Offset(size.width,5f),
+////                strokeWidth = 14.dp.toPx(),
+////                cap = StrokeCap.Round
+////            )
+////            drawLine(
+////                color = Color(0xFF3F51B5),
+////                Offset(0.0f,5.0f),
+////                Offset(size.width * percent,5f),
+////                strokeWidth = 14.dp.toPx(),
+////                cap = StrokeCap.Round
+////            )
+//        }
+//    }
 
 }
 
+class CustomShape(private val curveOffset: Dp) : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        val path = Path().apply {
+            val offset = 0
+            val curveHeight = size.height * 0.6f
+            val curveStartX = 0f
+            val curveEndX = size.width/2 + offset
+            val controlPointX = size.width / 4f
+
+            moveTo(0f, 0f)
+
+            addRoundRect(roundRect = RoundRect(Rect(offset = Offset(0f,0f),size = size/2f), topLeft = CornerRadius(300f,300f)))
+            addRoundRect(roundRect = RoundRect(Rect(offset = Offset(0f,0f),size = size/2f), topRight = CornerRadius(300f,300f)))
+
+//            addOval(Rect(10f,10f,50f,50f))
+
+//            moveTo(size.width/2, 0f)
+            close()
+        }
+
+        return Outline.Generic(path)
+    }
+}
+
+
+//@Preview
+@Composable
+fun DiamondCornerShape() = DiamondCornerShape(CornerSize(30))
+
+class DiamondCornerShape(cornerSize: CornerSize) : CornerBasedShape(
+    topStart = cornerSize,
+    topEnd = cornerSize,
+    bottomEnd = cornerSize,
+    bottomStart = cornerSize
+) {
+    override fun copy(
+        topStart: CornerSize,
+        topEnd: CornerSize,
+        bottomEnd: CornerSize,
+        bottomStart: CornerSize
+    ): CornerBasedShape {
+        return DiamondCornerShape(topStart)
+    }
+
+    override fun createOutline(
+        size: Size,
+        topStart: Float,
+        topEnd: Float,
+        bottomEnd: Float,
+        bottomStart: Float,
+        layoutDirection: LayoutDirection
+    ): Outline {
+
+        val w = size.width
+        val h = size.height
+
+        val path = Path().apply {
+            moveTo(0f, 3 * topStart)
+            lineTo(topStart, topStart)
+            lineTo(3 * topStart, 0f)
+            lineTo(w - 3 * topEnd, 0f)
+            lineTo(w - topEnd, topEnd)
+            lineTo(w, 3 * bottomEnd)
+            lineTo(w, h - 3 * bottomEnd)
+            lineTo(w - bottomEnd, h - bottomEnd)
+            lineTo(w - 3 * bottomStart, h)
+            lineTo(3 * bottomStart, h)
+            lineTo(bottomStart, h - bottomStart)
+            lineTo(0f, h - 3 * bottomStart)
+            close()
+        }
+        return Outline.Generic(path)
+    }
+}
 
 class NavShape(
     private val widthOffset: Dp,
@@ -410,7 +557,9 @@ fun Loading(size : Int){
     LottieAnimation(
         composition,
         progress,
-        modifier = Modifier.size(size.dp).background(color = Color(0xFF848484))
+        modifier = Modifier
+            .size(size.dp)
+            .background(color = Color(0xFF848484))
     )
 
 }

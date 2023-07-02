@@ -17,6 +17,7 @@
     <string name="remove_ads_rewarded_video_id" translatable="false">ca-app-pub-4444093850770924/7925664194</string>
     <string name="interstitial_ad_three_stop_id" translatable="false">ca-app-pub-4444093850770924/1767449952</string>
 
+    <string name="asset_statements" translatable="false">[{ \"include\": \"https://cee-platform-87d21.web.app/.well-known/assetlinks.json\" }]</string>
 
 
 
@@ -406,6 +407,7 @@ Latest update: 1 apr 2023
     <string name="lbl_verifyOtp_currentUserBanned">Current User Banned!</string>
     <string name="lbl_searchViewCountryPicker_searchCountry">Search for country</string>
     <string name="lbl_feedback_feedbackToast">You’ve passed by a camera! Your feedback will help us improve.</string>
+    <string name="lbl_feedback_title_feedbackToast">You’ve passed by a </string>
     <string name="lbl_nearestIncedents_dayAgo">day ago</string>
     <string name="lbl_nearestIncedednts_hourAgo">hour ago</string>
     <string name="lbl_nearestIncedednts_minuteAgo">minute ago</string>

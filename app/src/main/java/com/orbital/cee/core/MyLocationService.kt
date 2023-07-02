@@ -7,7 +7,6 @@ import android.location.Location
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -15,24 +14,15 @@ import android.os.VibratorManager
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.NotificationCompat
-import androidx.datastore.core.DataStore
-import androidx.datastore.dataStore
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import kotlinx.serialization.json.Json
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
-import com.google.gson.Gson
 import com.mapbox.geojson.Point
 import com.orbital.cee.R
 import com.orbital.cee.core.MyLocationService.GlobalStreetSpeed.streetSpeedLimit
@@ -45,103 +35,116 @@ import com.orbital.cee.core.MyLocationService.LSS.isLocationChange
 import com.orbital.cee.core.MyLocationService.LSS.lrouteCoordinates
 import com.orbital.cee.core.MyLocationService.LSS.resetTrip
 import com.orbital.cee.core.MyLocationService.LSS.speed
-import com.orbital.cee.data.repository.DSRepositoryImpl
 import com.orbital.cee.data.repository.DataStoreRepository
 import com.orbital.cee.data.repository.dataStore
-import com.orbital.cee.data.repository.datastore
-import com.orbital.cee.model.AlarmLessReports
 import com.orbital.cee.model.NewReport
 import com.orbital.cee.model.OverpassResponse
-import com.orbital.cee.model.WeatherDto
 import com.orbital.cee.utils.MetricsUtils
 import com.orbital.cee.view.home.HomeActivity
-import com.orbital.cee.view.home.HomeActivity.Singlt.stopCount
-import com.orbital.cee.view.home.data_Store
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.internal.wait
 import java.io.IOException
+
 import java.util.*
 class MyLocationService: Service() {
-//    private val dataStore: DataStore<Preferences> = applicationContext.dataStore
     object LSS {
         private var tripLastLocation : Location? = null
         private var inP2PLastLocation : Location? = null
         var inP2PDistance = 0.0f
-        var TripDistance = mutableFloatStateOf(0f)
-        var TripDuration = mutableLongStateOf(0L)
+        var TripDistance = mutableStateOf(0f)
+        var TripDuration = mutableStateOf(0L)
         var isTripPused = mutableStateOf(false)
         var isChangeDetected = mutableStateOf(false)
         var isLocationChange = mutableStateOf(false)
-        var TripMaxSpeed = mutableIntStateOf(0)
-        var TripAverageSpeed = mutableIntStateOf(0)
-        var inP2PAverageSpeed = mutableIntStateOf(0)
-        var roadMaxSpeed = mutableIntStateOf(0)
-        val speed = mutableIntStateOf(0)
+        var TripMaxSpeed = mutableStateOf(0)
+        var TripAverageSpeed = mutableStateOf(0)
+        var inP2PAverageSpeed = mutableStateOf(0)
+        var roadMaxSpeed = mutableStateOf(0)
+        val speed = mutableStateOf(0)
         var TripStartTime = Date()
         var EnteredP2PTime = Date()
         var isEnteredPointToPointRoad = mutableStateOf(false)
         var lrouteCoordinates = ArrayList<Point>()
-        var listOfSpeedsInTrip = arrayListOf<Int>()
-
-
+        private var listOfSpeedsInTrip = arrayListOf<Int>()
+        var listOfSpeedsInTripIterator = arrayListOf<Int>()
         fun LSSReset(){
             tripLastLocation = null
             inP2PLastLocation = null
             inP2PDistance = 0.0f
-            TripDistance.floatValue = 0f
-            TripDuration.longValue = 0L
+            TripDistance.value = 0f
+            TripDuration.value = 0L
             isTripPused.value = false
              isChangeDetected.value = false
              isLocationChange.value = false
             isEnteredPointToPointRoad.value = false
-             TripMaxSpeed.intValue = 0
-             TripAverageSpeed.intValue = 0
-             inP2PAverageSpeed.intValue = 0
-             roadMaxSpeed.intValue = 0
-             speed.intValue = 0
+             TripMaxSpeed.value = 0
+             TripAverageSpeed.value = 0
+             inP2PAverageSpeed.value = 0
+             roadMaxSpeed.value = 0
+             speed.value = 0
              TripStartTime = Date()
              EnteredP2PTime = Date()
-
              lrouteCoordinates = ArrayList<Point>()
              listOfSpeedsInTrip = arrayListOf<Int>()
         }
 
-        fun calcTrip(cloc: Location) {
+        suspend fun calcTrip(cloc: Location) {
             if (!isTripPused.value){
                 if (tripLastLocation == null) {
                     tripLastLocation = cloc
                 }else{
-                    listOfSpeedsInTrip.add((cloc.speed * 3.6).toInt())
-                    TripAverageSpeed.intValue = listOfSpeedsInTrip.average().toInt()
-                    TripMaxSpeed.intValue = listOfSpeedsInTrip.max().toInt()
+                    addElementAsync(listOfSpeedsInTrip,(cloc.speed * 3.6).toInt())
+                    getAverageAsync(listOfSpeedsInTrip)
+                    getMaxAsync(listOfSpeedsInTrip)
+//                    listOfSpeedsInTrip.add(listOfSpeedsInTrip.size,(cloc.speed * 3.6).toInt())
+//                    TripAverageSpeed.value = listOfSpeedsInTrip.average().toInt()
+//                    TripMaxSpeed.value = listOfSpeedsInTrip.max().toInt()
+
 
                     val tempDistance = tripLastLocation!!.distanceTo(cloc)/1000
                     tripLastLocation = cloc
-                    TripDistance.floatValue = TripDistance.floatValue + tempDistance
+                    TripDistance.value = TripDistance.value + tempDistance
                 }
             }else{
-                TripDuration.longValue = MetricsUtils.getSeconds(TripStartTime, Date())
+                TripDuration.value = MetricsUtils.getSeconds(TripStartTime, Date())
             }
 
+        }
+        private suspend fun addElementAsync(list: MutableList<Int>, element: Int) = coroutineScope {
+            val job = async {
+                list.add(element)
+                println("Element added: $element")
+            }
+            job.await()
+        }
+        private suspend fun getAverageAsync(list: MutableList<Int>) = coroutineScope {
+            val job = async {
+                TripAverageSpeed.value = list.average().toInt()
+            }
+            job.await()
+        }
+        private suspend fun getMaxAsync(list: MutableList<Int>) = coroutineScope {
+            val job = async {
+                TripMaxSpeed.value = list.max().toInt()
+            }
+            job.await()
         }
 //        fun calcAverageSpeed(cLoc:Location){
 //            if (inP2PLastLocation == null) {
@@ -155,16 +158,16 @@ class MyLocationService: Service() {
 //                inP2PAverageSpeed.value = (inP2PDistance.div(hours)).toInt()
 //            }
 //        }
-        fun resetP2PCalc(){
-            inP2PLastLocation = null
-            inP2PDistance = 0f
-            inP2PAverageSpeed.intValue = 0
-        }
+//        fun resetP2PCalc(){
+//            inP2PLastLocation = null
+//            inP2PDistance = 0f
+//            inP2PAverageSpeed.value = 0
+//        }
         fun resetTrip(){
             TripStartTime = Date()
-            TripDistance.floatValue = 0f
-            TripAverageSpeed.intValue = 0
-            TripMaxSpeed.intValue = 0
+            TripDistance.value = 0f
+            TripAverageSpeed.value = 0
+            TripMaxSpeed.value = 0
             listOfSpeedsInTrip.clear()
             lrouteCoordinates.clear()
         }
@@ -190,14 +193,13 @@ class MyLocationService: Service() {
 
     }
 
-    private var count: Int = 0
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var locationClient: LocationClient
     private lateinit var db : FirebaseFirestore
     var rad = 5L
     private  var previousReportId : String = ""
     var listOfSpeeds = arrayListOf<Int>()
-    var isInAway = mutableStateOf(true)
+
     private lateinit var mMediaPlayer : MediaPlayer
 
     override fun onBind(p0: Intent?): IBinder? {
@@ -241,6 +243,9 @@ class MyLocationService: Service() {
 
     var prevLocation = Location("")
     private var lLocation = Location("")
+    var counter = 0
+    var counter1 = 0
+    var i = 0
     @RequiresApi(Build.VERSION_CODES.S)
     private fun start() {
         val loc = Location("")
@@ -262,9 +267,13 @@ class MyLocationService: Service() {
                     addDistance(dis.div(1000f))
                     it
                 }
-                calcTrip(it)
-                isLocationChanged(it)
-                speed.intValue = (it.speed * 3.6).toInt()
+                counter++
+                if (counter > 4){
+                    calcTrip(it)
+                    isLocationChanged(it)
+                    counter = 0
+                }
+                speed.value = (it.speed * 3.6).toInt()
                 isChangeDetected.value = true
 
                 GeofenceBroadcastReceiver.GBRS.GeoId.value?.let {rId->
@@ -281,8 +290,7 @@ class MyLocationService: Service() {
                                 if(it.bearing.toInt() in reportDirectionAsFloat.minus(22.5).toInt() .. reportDirectionAsFloat.plus(22.5).toInt()){
                                     if(previousReportId != repo.reportId){
                                         if (HomeActivity.Singlt.SoundSta.value == 1){
-                                            if (mMediaPlayer.isPlaying){
-                                            }else{
+                                            if (!mMediaPlayer.isPlaying){
                                                 if (!LSR.isThisReportMuted(reportId = rId)){
                                                     val audio : AudioManager =  applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
                                                     val stVolLev = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
@@ -312,15 +320,15 @@ class MyLocationService: Service() {
                                 Log.d("DEBUG_PLAY_SOUND_ITR","hey2")
                                 if(previousReportId != repo.reportId){
                                     if (HomeActivity.Singlt.SoundSta.value == 1){
-                                        if (mMediaPlayer.isPlaying){
-
-                                        }else{
-                                            val audio : AudioManager =  applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                                            val stVolLev = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-                                            audio.setStreamVolume(AudioManager.STREAM_MUSIC,15,0)
-                                            mMediaPlayer.start()
-                                            mMediaPlayer.setOnCompletionListener {
-                                                audio.setStreamVolume(AudioManager.STREAM_MUSIC,stVolLev,0)
+                                        if (!mMediaPlayer.isPlaying){
+                                            if (!LSR.isThisReportMuted(reportId = rId)){
+                                                val audio : AudioManager =  applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                                                val stVolLev = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+                                                audio.setStreamVolume(AudioManager.STREAM_MUSIC,15,0)
+                                                mMediaPlayer.start()
+                                                mMediaPlayer.setOnCompletionListener {
+                                                    audio.setStreamVolume(AudioManager.STREAM_MUSIC,stVolLev,0)
+                                                }
                                             }
                                         }
                                     }else if (HomeActivity.Singlt.SoundSta.value == 2){
@@ -341,15 +349,24 @@ class MyLocationService: Service() {
                         }
                         if (reportType == 6){
                             LSS.isEnteredPointToPointRoad.value = true
-                            LSS.roadMaxSpeed.intValue = repo.reportSpeedLimit ?: 0
+                            LSS.roadMaxSpeed.value = repo.reportSpeedLimit ?: 0
                         }
                     }
                 }
                 if (LSS.isEnteredPointToPointRoad.value){
-                    listOfSpeeds.add((it.speed * 3.6).toInt())
-                    LSS.inP2PAverageSpeed.intValue = listOfSpeeds.average().toInt()
+                    i++
+                    if (i%2 == 0){
+                        LSS.inP2PAverageSpeed.value = if(listOfSpeeds.isNotEmpty()){
+                            listOfSpeeds.average().toInt()
+                        }else{
+                            0
+                        }
+                    }else{
+                        listOfSpeeds.add((it.speed * 3.6).toInt())
+                    }
                 }
-
+                counter1++
+                if (counter1 >15){
                 val req = Request.Builder()
                     .url("https://overpass-api.de/api/interpreter?data=[out:json];way(around:10,${it.latitude},${it.longitude})['maxspeed'];out;").get().build()
                 val client = OkHttpClient()
@@ -357,9 +374,13 @@ class MyLocationService: Service() {
                     override fun onFailure(call: Call, e: IOException) {
                         Log.d("DEBUG_SPEED_LIMIT_STREET",e.message.toString())
                     }
+
+                    private val myJson = Json { ignoreUnknownKeys = true }
+
                     override fun onResponse(call: Call, response: Response) {
                         response.body?.string()?.let { responseBody->
-                            val data = Gson().fromJson(responseBody, OverpassResponse::class.java)
+//                            val data = Gson().fromJson(responseBody, OverpassResponse::class.java)
+                            val data = myJson.decodeFromString<OverpassResponse>(responseBody)
                             data.elements.firstOrNull()?.tags?.maxspeed?.let {maxSpeed ->
                                 val digits = maxSpeed.filter { it.isDigit() }
                                 val mphSpeedLimit = digits.toDoubleOrNull()
@@ -370,10 +391,13 @@ class MyLocationService: Service() {
                                     streetSpeedLimit.value = null
                                 }
                             }
-                            Log.d("DEBUG_SPEED_LIMIT_STREET", "SUC: ${responseBody}")
+                            Log.d("DEBUG_SPEED_LIMIT_STREET", "SUC: $responseBody")
                         }
                     }
                 })
+                    counter1 = 0
+                }
+
             }
             .launchIn(serviceScope)
         startForeground(1, notification.build())
@@ -408,23 +432,7 @@ class MyLocationService: Service() {
         serviceScope.cancel()
 
     }
-    @RequiresApi(Build.VERSION_CODES.S)
-    private fun isHasSpeed(speed: Int) {
-        if (speed>20){
-            count++
-            if (count > 5){
-                isInAway.value = true
-                count = 0
-            }
-        }else{
-            if (speed<5){
-                if (isInAway.value){
-                    isInAway.value = false
-                    stopCount.value++
-                }
-            }
-        }
-    }
+
 
     @RequiresApi(Build.VERSION_CODES.S)
     private fun isLocationChanged(location: Location?) {

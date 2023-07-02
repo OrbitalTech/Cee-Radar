@@ -99,7 +99,7 @@ fun ReportViewDetail(model: HomeViewModel = viewModel(),reportId : String = "",o
         4->{
             color.value = Color(0XFFFECD5C)
             color1.value = Color(0XFFAAAAAA)
-            icon.value = R.drawable.ic_construction
+            icon.value = R.drawable.ic_new_construction
             title.value = "Road under Construction"
         }
     }

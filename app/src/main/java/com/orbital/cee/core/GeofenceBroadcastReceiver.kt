@@ -22,6 +22,9 @@ import com.orbital.cee.R
 import com.orbital.cee.core.Constants.NOTIFICATION_CHANNEL_ID
 import com.orbital.cee.core.Constants.NOTIFICATION_CHANNEL_NAME
 import com.orbital.cee.core.Constants.NOTIFICATION_ID
+import com.orbital.cee.core.GeofenceBroadcastReceiver.GBRS.GeoId
+import com.orbital.cee.core.GeofenceBroadcastReceiver.GBRS.exitReportId
+import com.orbital.cee.core.GeofenceBroadcastReceiver.GBRS.isExit
 import com.orbital.cee.view.home.HomeActivity
 
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
@@ -42,19 +45,14 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                     val triggeringGeofences = geofencingEvent.triggeringGeofences
                     if (triggeringGeofences != null) {
                         for (i in triggeringGeofences){
-                            val aa = i.requestId.split(",").toTypedArray()
-//                            playAlertSound(true,context, bearing = aa[1].toInt())
-                            Log.d("BERING_TEST","REPOID-"+aa[0])
-                            Log.d("BERING_TEST","REPOBER-"+aa[1])
-
-                            Log.d("GEOBR",i.requestId)
-
-                            GBRS.add(aa[0])
+                            GBRS.add(i.requestId)
                         }
                     }
                     Log.d("GEOBR", "Geofence Enter ")
                 }
                 Geofence.GEOFENCE_TRANSITION_EXIT -> {
+                    exitReportId.value = GeoId.value
+                    isExit.value = true
                     GBRS.add(null)
                     Log.d("GEOBR", "Geofence Exit")
                 }
@@ -89,6 +87,8 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
     }
     object GBRS {
         var GeoId = mutableStateOf<String?>(null)
+        var isExit = mutableStateOf<Boolean?>(null)
+        var exitReportId = mutableStateOf<String?>(null)
         var secondGeo :String? = null
         fun add(geoId: String?) {
             if (geoId != null){

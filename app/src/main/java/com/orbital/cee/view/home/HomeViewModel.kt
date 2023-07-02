@@ -7,6 +7,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
@@ -25,7 +26,6 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.runtime.*
 import androidx.core.app.ActivityCompat
-import androidx.datastore.dataStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -38,7 +38,6 @@ import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
-import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
 import com.orbital.cee.R
 import com.google.firebase.Timestamp
@@ -49,7 +48,6 @@ import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.Source
-import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.storage.FirebaseStorage
 import com.google.gson.Gson
 import com.google.gson.JsonElement
@@ -57,14 +55,15 @@ import com.mapbox.android.gestures.MoveGestureDetector
 import com.mapbox.geojson.Point
 
 import com.mapbox.maps.CameraOptions
+import com.mapbox.maps.EdgeInsets
 import com.mapbox.maps.MapView
 import com.mapbox.maps.extension.style.layers.properties.generated.IconAnchor
+import com.mapbox.maps.extension.style.utils.toValue
 import com.mapbox.maps.plugin.LocationPuck2D
-import com.mapbox.maps.plugin.animation.camera
+import com.mapbox.maps.plugin.annotation.Annotation
 import com.mapbox.maps.plugin.annotation.AnnotationConfig
 import com.mapbox.maps.plugin.annotation.AnnotationPlugin
-import com.mapbox.maps.plugin.annotation.generated.OnPointAnnotationClickListener
-import com.mapbox.maps.plugin.annotation.generated.PointAnnotation
+import com.mapbox.maps.plugin.annotation.generated.OnPointAnnotationDragListener
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
 import com.mapbox.maps.plugin.gestures.OnMoveListener
@@ -72,9 +71,7 @@ import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorBearingChangedListener
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener
 import com.mapbox.maps.plugin.locationcomponent.location
-import com.orbital.cee.core.AppSettingsSerializer
 import com.orbital.cee.core.Constants
-import com.orbital.cee.core.Constants.DB_REF_ARCHIVE_REPORT
 import com.orbital.cee.core.Constants.DB_REF_REPORT
 import com.orbital.cee.core.Constants.DB_REF_REPORT_DEBUG
 import com.orbital.cee.core.Constants.DB_REF_USER
@@ -90,23 +87,21 @@ import com.orbital.cee.data.repository.DataStoreRepository
 import com.orbital.cee.data.repository.UserStatistics
 import com.orbital.cee.model.*
 import com.orbital.cee.utils.MetricsUtils
+import com.orbital.cee.utils.MetricsUtils.Companion.getPermissionsByUserTier
+import com.orbital.cee.utils.MetricsUtils.Companion.getReportTypeByReportTypeAndSpeedLimit
+import com.orbital.cee.utils.MetricsUtils.Companion.userTypeToUserTier
 import com.orbital.cee.utils.Utils
 import com.orbital.cee.view.MainActivity
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.collections.immutable.mutate
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.tasks.await
+import kotlinx.serialization.json.Json
 import org.json.JSONObject
-import java.math.RoundingMode
 import java.net.URL
-import java.text.DecimalFormat
-import java.text.SimpleDateFormat
 import java.util.*
-import java.util.regex.Pattern
 import javax.inject.Inject
 import kotlin.collections.ArrayList
 
@@ -125,14 +120,16 @@ class HomeViewModel @Inject  constructor(
     val readFirstLaunch = dataStoreRepository.readFirstLaunch.asLiveData()
     val lsatAdsWatched = dataStoreRepository.watchTime.asLiveData()
     val loadTimeOfLastReport = dataStoreRepository.loadTimeOfLastReport.asLiveData()
-    val readMaxSpeed = dataStoreRepository.readMaxSpeed.asLiveData()
-    val readAlertsCount = dataStoreRepository.readAlertsCount.asLiveData()
+//    val readMaxSpeed = dataStoreRepository.readMaxSpeed.asLiveData()
+//    val readAlertsCount = dataStoreRepository.readAlertsCount.asLiveData()
     val readDistance = dataStoreRepository.readDistance.asLiveData()
     val soundStatus = dataStoreRepository.readSoundStatus.asLiveData()
-    val userType = dataStoreRepository.readUserType.asLiveData()
+//    val userType = dataStoreRepository.readUserType.asLiveData()
     val reportCountPerOneHour : LiveData<Int> = dataStoreRepository.reportCountPerOneHour.asLiveData()
     val trips = dataStoreRepository.tripList.asLiveData()
     val langCode = dataStoreRepository.languageCode.asLiveData()
+    val speedometerId = dataStoreRepository.speedometerId.asLiveData()
+    val cursorId = dataStoreRepository.cursorId.asLiveData()
     val geofenceRadius = dataStoreRepository.readGeofenceRadius.asLiveData()
     var appLaunchTime = mutableStateOf<Date?>(null)
     var userInfo = mutableStateOf(UserNew())
@@ -146,7 +143,8 @@ class HomeViewModel @Inject  constructor(
     var navigationBarHeight = mutableStateOf(0)
     var isReachedQuotaDialog = mutableStateOf(false)
     var isDebugMode :MutableLiveData<Boolean> = MutableLiveData(false)
-    var appSetting :MutableLiveData<AppSetting> = MutableLiveData(AppSetting(false,10))
+//    var currentUserType :MutableLiveData<Int> = MutableLiveData(0)
+    var appSetting :MutableLiveData<AppSetting> = MutableLiveData(AppSetting(false,1000f))
 
     var isDeleteReportRequested =  mutableStateOf(false)
     var lastLocation = mutableStateOf(Location(""))
@@ -158,21 +156,32 @@ class HomeViewModel @Inject  constructor(
     var isShowDots = mutableStateOf(false)
     var isCameraZoomChanged = mutableStateOf(false)
 
-    val onlineUserCounter = mutableStateOf(0)
+//    val onlineUserCounter = mutableStateOf(0)
+    val clickedUserId = mutableStateOf("")
+
+    val deepLinkActionType = mutableStateOf<String?>(null)
+    val deepLinkFirstArg = mutableStateOf<String?>(null)
+    val deepLinkSecondArg = mutableStateOf<String?>(null)
 //    val speedPercent = mutableStateOf(0.0f)
     var whichButtonClicked = mutableStateOf(0)
     val slider = mutableStateOf(false)
     val inSideReportToast = mutableStateOf(false)
     val inSideReport = mutableStateOf(false)
-    val isDarkModeEnabled = mutableStateOf(false)
+    val usersFound = mutableStateOf(false)
+//    val isDarkModeEnabled = mutableStateOf(false)
     var reportId = mutableStateOf("")
     val myReports = mutableListOf<SingleCustomReport>()
+    val resultUser = mutableListOf<UserNameAndID>()
     var temperature = mutableStateOf<Int?>(null)
-    var tripDurationInSeconds = mutableStateOf<Int?>(0)
+//    var tripDurationInSeconds = mutableStateOf<Int?>(0)
     private val responseMessage = mutableStateOf<Event<String>?>(null)
     var isLocationNotAvailable = mutableStateOf(false)
     var fusedLocationProviderClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(app)
     val isLiked = mutableStateOf<Boolean?>(null)
+    val isNearReport = mutableStateOf<Boolean>(false)
+    val nearReportType = mutableStateOf(1)
+    val reportSightRadius = mutableStateOf(1L)
+    val distanceAway = mutableStateOf(0.0)
     val allReports = ArrayList<NewReport>()
     var annotationApi : AnnotationPlugin? = null
     var annotationApii : AnnotationPlugin? = null
@@ -181,9 +190,11 @@ class HomeViewModel @Inject  constructor(
     var pointAnnotationManagerr : PointAnnotationManager? = null
     lateinit var annotationConfig : AnnotationConfig
     lateinit var annotationConfigg : AnnotationConfig
-
+    var userDetail = mutableStateOf(UserNew())
     val isChangeInZone1 = mutableStateOf(false)
-
+    val currentUserTier: MutableLiveData<UserTiers> = MutableLiveData(UserTiers.GUEST)
+    private val currentUserPermission: MutableLiveData<UserPermission> = MutableLiveData(UserPermission())
+    val stopCount =  mutableStateOf(0)
     private val tempReports1 = mutableListOf<NewReport>()
     private val tempGeofence1 = mutableListOf<Geofence>()
     private val tempReports2 = mutableListOf<NewReport>()
@@ -203,26 +214,28 @@ class HomeViewModel @Inject  constructor(
 
     var timeRemain = mutableStateOf(0)
     var isTimerRunning = mutableStateOf(false)
+    init {
+        retrieveUserType()
+        retrieveIsDebugMode()
+        retrieveIsPreventScreenSleep()
+    }
 
-
-
-//    init {
-//        viewModelScope.launch(Dispatchers.IO) {
-//            getUserStatistics().collect{
-//                Log.d("DEBUG_STATISTICS_VM",it.maxSpeed.toString())
-//            }
-//        }
-//
-//    }
-
-
+    private fun retrieveUserType() {
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreRepository.readUserType.collect{
+                currentUserTier.postValue((userTypeToUserTier(it)))
+                currentUserPermission.postValue(getPermissionsByUserTier(userTypeToUserTier(it)))
+            }
+        }
+    }
     private val onIndicatorBearingChangedListener = OnIndicatorBearingChangedListener {
         if (speed.value > 5){
             mapView.getMapboxMap().setCamera(CameraOptions.Builder().bearing(it).build())
         }
     }
     private val onIndicatorPositionChangedListener = OnIndicatorPositionChangedListener {
-        mapView.getMapboxMap().setCamera(CameraOptions.Builder().center(it).build())
+        val padding = Resources.getSystem().displayMetrics.heightPixels/3.0
+        mapView.getMapboxMap().setCamera(CameraOptions.Builder().center(it).padding(EdgeInsets(padding,0.0,0.0,0.0)).build())
         mapView.gestures.focalPoint = mapView.getMapboxMap().pixelForCoordinate(it)
     }
     private val onMoveListener = object : OnMoveListener {
@@ -236,21 +249,52 @@ class HomeViewModel @Inject  constructor(
         }
 
     }
-    init {
-        retrieveIsDebugMode()
-        retrieveIsPreventScreenSleep()
-    }
-    fun saveStatistics(alertedCount:Int, traveledDistance : Float, _maxSpeed: Int){
-        viewModelScope.launch(Dispatchers.IO) {
-            ds.retrieveStatistics().collect{
-                ds.saveStatistics(uStatistics = UserStatistics(
-                    alertedCount = it.alertedCount + alertedCount,
-                    traveledDistance =it.traveledDistance +traveledDistance ,
-                    maxSpeed =it.maxSpeed + _maxSpeed
-                ))
+     val onDragAnnotation = object : OnPointAnnotationDragListener{
+        override fun onAnnotationDrag(annotation: Annotation<*>) {
+        }
+        override fun onAnnotationDragFinished(annotation: Annotation<*>) {
+            val reportArray = annotation.getData()?.asJsonObject
+            val reportId = reportArray?.get("report")
+             val myJson = Json { ignoreUnknownKeys = true }
+            val data = myJson.decodeFromString<GeometryAno>(annotation.geometry.toValue().contents.toString())
+            val point = GeoPoint(data.coordinates[1],data.coordinates[0])
+            reportId?.asString?.let {
+                updateReportLocation(it,point)
             }
         }
+        override fun onAnnotationDragStarted(annotation: Annotation<*>) {
+            Log.d("DEBUG_DRAG_ANNOTATION","hey2")
+        }
     }
+    private fun updateReportLocation(reportId: String, point: GeoPoint) {
+        try {
+            val hash = GeoFireUtils.getGeoHashForLocation(GeoLocation(point.latitude, point.longitude))
+            val report : HashMap<String, Any> = HashMap<String, Any>()
+            report["g"] = hash
+            report["geoLocation"] = listOf(point.latitude, point.longitude)
+            Log.d("DEBUG_DRAG_ANNOTATION", reportId)
+            Log.d("DEBUG_DRAG_ANNOTATION", point.latitude.toString())
+            Log.d("DEBUG_DRAG_ANNOTATION", point.longitude.toString())
+            Log.d("DEBUG_DRAG_ANNOTATION", hash)
+            db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(reportId).update(report)
+        }catch (e:Exception){
+            Log.d("DEBUG_HOME_VIEW_MODEL", "updateReportLocation() : ${e.message.toString()}")
+        }
+
+    }
+
+
+    //    fun saveStatistics(alertedCount:Int, traveledDistance : Float, _maxSpeed: Int){
+//        viewModelScope.launch(Dispatchers.IO) {
+//            ds.retrieveStatistics().collect{
+//                ds.saveStatistics(uStatistics = UserStatistics(
+//                    alertedCount = it.alertedCount + alertedCount,
+//                    traveledDistance =it.traveledDistance +traveledDistance ,
+//                    maxSpeed =it.maxSpeed + _maxSpeed
+//                ))
+//            }
+//        }
+//    }
     suspend fun retrieveStatistics(){
         viewModelScope.launch(Dispatchers.IO) {
             ds.retrieveStatistics().collect{
@@ -258,20 +302,24 @@ class HomeViewModel @Inject  constructor(
             }
         }
     }
-
-
-//    var style: Style? = null
     fun initLocationComponent() {
         val locationComponentPlugin =  mapView.location
+        val cursorIcon = mutableStateOf(R.drawable.ic_default_cursor)
+        viewModelScope.launch {
+            dataStoreRepository.cursorId.collect{
+                if (it == "HITEX"){
+                    cursorIcon.value = R.drawable.ic_hitex_cursor
+                }
+            }
+        }
         locationComponentPlugin.updateSettings {
             this.enabled = true
             this.pulsingEnabled = false
-            this.pulsingMaxRadius = 50f
             this.pulsingColor = R.color.primary
             this.locationPuck = LocationPuck2D(
                 topImage = AppCompatResources.getDrawable(
                     app,
-                    R.drawable.ic_user_puck_new,
+                    cursorIcon.value,
                 ),
                 bearingImage = AppCompatResources.getDrawable(
                     app,
@@ -292,10 +340,7 @@ class HomeViewModel @Inject  constructor(
     }
     fun setupGesturesListener() {
         mapView.gestures.addOnMoveListener(onMoveListener)
-        mapView.camera.addCameraZoomChangeListener { dd ->
-            Log.d("DEBUG_CAMERA_ZOOM", dd.toString())
-            isShowDots.value = dd <= 12.0
-        }
+
     }
     fun removeGesturesListener() {
         mapView.gestures.removeOnMoveListener(onMoveListener)
@@ -329,6 +374,10 @@ class HomeViewModel @Inject  constructor(
                 report["reportId"] = id
                 if (speedLimit!=null){
                     report["reportSpeedLimit"] = speedLimit
+                }else{
+                    MyLocationService.GlobalStreetSpeed.streetSpeedLimit.value?.let {speedLimit->
+                        report["reportSpeedLimit"] = speedLimit.toInt()
+                    }
                 }
                 if (bearing == 0f){
                     report["reportDirection"] = -1
@@ -339,11 +388,8 @@ class HomeViewModel @Inject  constructor(
                 document.set(report).await()
                 idReportInUserDocument.set(reportt).await()
             }
-
-
-
         } catch (e: Exception) {
-
+            Log.d("VIEW_MODEL_LOGS",e.message.toString())
         }
     }
     fun addReportFeedback(reportId : String,status : Boolean) = viewModelScope.launch{
@@ -357,7 +403,7 @@ class HomeViewModel @Inject  constructor(
                 document.set(feedback).await()
             }
         }catch (e:Exception){
-
+            Log.d("VIEW_MODEL_LOGS",e.message.toString())
         }
     }
     fun deleteUser() = viewModelScope.launch {
@@ -365,6 +411,36 @@ class HomeViewModel @Inject  constructor(
             if (it.isSuccessful) {
                 Log.d("TAG", "User account deleted.")
             }
+        }
+    }
+    suspend fun findUserByPhoneOrEmail(phoneOrEmail:String){
+        try {
+            usersFound.value = false
+            val res0 = db.collection(DB_REF_USER).whereEqualTo("phoneNumber",phoneOrEmail).get().await().documents
+            val res1 = db.collection(DB_REF_USER).whereEqualTo("email",phoneOrEmail).get().await().documents
+            val res2 = db.collection(DB_REF_USER).whereEqualTo("username",phoneOrEmail).get().await().documents
+            val res = concatenate(res0,res1,res2)
+            resultUser.clear()
+            res.forEach {user->
+                Log.d("RESULTS_BLAB",res.size.toString())
+                resultUser.add(
+                    UserNameAndID(
+                        userId = user.get("userId") as String,
+                        username = user.get("username") as String
+                    )
+                )
+            }
+            usersFound.value = true
+        }catch (e:Exception){
+            usersFound.value = false
+            Log.d("DEBUG_HOME_VIEW_MODEL", "updateReportLocation() : ${e.message.toString()}")
+        }
+
+    }
+    suspend fun findUserByUID(userId:String){
+        val res = db.collection(DB_REF_USER).document(userId).get().await()
+        if (res.data != null){
+            userDetail.value = res.toObject(UserNew::class.java)!!
         }
     }
     fun deleteReport(reportId: String) = viewModelScope.launch {
@@ -382,16 +458,16 @@ class HomeViewModel @Inject  constructor(
         viewModelScope.launch(Dispatchers.IO) {
             dataStoreRepository.saveAdsWatchTime(time)
         }
-    fun saveMaxSpeed(speed: Int) =
-        viewModelScope.launch(Dispatchers.IO) {
-            dataStoreRepository.saveMaxSpeed(speed)
-        }
+//    fun saveMaxSpeed(speed: Int) =
+//        viewModelScope.launch(Dispatchers.IO) {
+//            dataStoreRepository.saveMaxSpeed(speed)
+//        }
     fun addAlertCount(alertCount : Int) =
         viewModelScope.launch(Dispatchers.IO) {
             val temp = alertCount.plus(1)
             dataStoreRepository.addAlertCount(temp)
         }
-    fun saveUserType(userType : Int) =
+    private fun saveUserType(userType : Int) =
         viewModelScope.launch(Dispatchers.IO) {
             dataStoreRepository.saveUserType(userType)
         }
@@ -416,40 +492,38 @@ class HomeViewModel @Inject  constructor(
             auth.currentUser?.let {
                 var a = 0
                 a += db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).whereEqualTo("reportByUID", it.uid).get().await().documents.size
-//                a += db.collection(DB_REF_ARCHIVE_REPORT).whereEqualTo("reportByUID", it.uid).get().await().documents.size
-
-                Log.d("PrintGetMyReportCount_Error",a.toString())
                 return a
             }
-            return -1
+            return 0
         }catch (e:Exception){
             Log.d("PrintGetMyReportCount_Error",e.message.toString())
             return 0
         }
     }
-
-
-     fun placeReportValidation(reportCounterVal : Int, lastReportPlaceTime : Long ):Boolean{
-        return if (userType.value == 2 || userType.value == 1){
-             true
-        }else{
-            if (Timestamp.now().seconds.minus(lastReportPlaceTime) < 360){
-                 if(reportCounterVal > 2){
-                    Log.d("DEBUG_VALIDATING_REPORT","1: "+reportCounterVal +" "+ loadTimeOfLastReport.value.toString(),)
-                    false
-                }else{
-                    Log.d("DEBUG_VALIDATING_REPORT","2: "+reportCounterVal +" "+ loadTimeOfLastReport.value.toString(),)
-                    saveTheTimeOfTheLastReport()
-                    incrementReportCountPerOneHour(reportCounterVal)
-                    true
-                }
-            }else{
-                Log.d("DEBUG_VALIDATING_REPORT","3: "+reportCounterVal +" "+ loadTimeOfLastReport.value.toString(),)
-                saveTheTimeOfTheLastReport()
-                resetIncrementedReportCounterPerOneHour()
-                 true
-            }
-        }
+     private fun placeReportValidation(reportCounterVal : Int?, lastReportPlaceTime : Long):Boolean{
+         return currentUserPermission.value?.let {permission->
+              if (permission.isCanAddReport){
+                 if (permission.reportLimitPerHour == -1){
+                     true
+                 }else{
+                     if (Timestamp.now().seconds.minus(lastReportPlaceTime) < 360){
+                         if((reportCounterVal?:0) > permission.reportLimitPerHour){
+                             false
+                         }else{
+                             saveTheTimeOfTheLastReport()
+                             incrementReportCountPerOneHour(reportCounterVal ?: 0)
+                             true
+                         }
+                     }else{
+                         saveTheTimeOfTheLastReport()
+                         resetIncrementedReportCounterPerOneHour()
+                         true
+                     }
+                 }
+             }else{
+                 false
+             }
+         } ?: false
     }
     private fun resetIncrementedReportCounterPerOneHour() =
         viewModelScope.launch(Dispatchers.IO) {
@@ -467,36 +541,13 @@ class HomeViewModel @Inject  constructor(
     }
     fun createClickedPin(lat: Double,lon:Double){
         pointAnnotationManagerr?.deleteAll()
-//        lateinit var viewAnnotation: View
-//        pointAnnotationManagerr?.addDragListener(object : OnPointAnnotationDragListener{
-//            override fun onAnnotationDrag(annotation: Annotation<*>) {
-//                mapView.viewAnnotationManager.updateViewAnnotation(
-//                    viewAnnotation,
-//                    viewAnnotationOptions {
-//                        geometry(annotation.geometry)
-//                    }
-//                )
-//            }
-//
-//            override fun onAnnotationDragFinished(annotation: Annotation<*>) {
-//                TODO("Not yet implemented")
-//            }
-//
-//            override fun onAnnotationDragStarted(annotation: Annotation<*>) {
-//                TODO("Not yet implemented")
-//            }
-//
-//        })
         val pointAnnotationOptions : PointAnnotationOptions = PointAnnotationOptions()
             .withPoint(Point.fromLngLat(lon, lat))
             .withIconSize(1.25)
             .withIconOffset(listOf(0.0,0.0))
             .withIconAnchor(IconAnchor.BOTTOM)
-//            .withDraggable(true)
             .withIconImage(convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_manual_place_camera)))
         pointAnnotationManagerr?.create(pointAnnotationOptions)
-
-
     }
     fun createMarkerOnMap(repo : List<NewReport>){
         try {
@@ -505,168 +556,164 @@ class HomeViewModel @Inject  constructor(
             }else{
             markerList = ArrayList()
             pointAnnotationManager?.deleteAll()
-//            pointAnnotationManager?.addClickListener(OnPointAnnotationClickListener {
-//                    annotation : PointAnnotation ->
-//                onClickReport(annotation)
-//                true
-//            })
             for (i in repo){
-                val bitmap = when(i.reportType){
-
-                    2->{ convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.marker_crash))}
-                    3-> {
-                        convertDrawableToBitMap(
-                            AppCompatResources.getDrawable(
-                                app,
-                                R.drawable.marker_police
-                            )
-                        )
-                    }
-                    4-> {
-                        convertDrawableToBitMap(
-                            AppCompatResources.getDrawable(
-                                app,
-                                R.drawable.marker_construction
-                            )
-                        )
-                    }
-                    5-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,
-                        when(i.reportSpeedLimit){
-                            60->{R.drawable.marker_static_camera_60}
-                            100->{R.drawable.marker_static_camera_100}
-                            50->{R.drawable.marker_static_camera_50}
-
-                            0->{R.drawable.marker_static_camera_0}
-                            10->{R.drawable.marker_static_camera_10}
-                            15->{R.drawable.marker_static_camera_15}
-                            20->{R.drawable.marker_static_camera_20}
-                            25->{R.drawable.marker_static_camera_25}
-                            30->{R.drawable.marker_static_camera_30}
-                            35->{R.drawable.marker_static_camera_35}
-                            40->{R.drawable.marker_static_camera_40}
-                            45->{R.drawable.marker_static_camera_45}
-                            55->{R.drawable.marker_static_camera_55}
-                            65->{R.drawable.marker_static_camera_65}
-                            70->{R.drawable.marker_static_camera_70}
-                            80->{R.drawable.marker_static_camera_80}
-                            90->{R.drawable.marker_static_camera_90}
-                            110->{R.drawable.marker_static_camera_110}
-                            120->{R.drawable.marker_static_camera_120}
-                            130->{R.drawable.marker_static_camera_130}
-                            140->{R.drawable.marker_static_camera_140}
-                            else->{R.drawable.marker_static_camera_0}
-                        }
-
-                    ))
-                    6-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,
-                        when(i.reportSpeedLimit){
-                            60->{R.drawable.marker_point_to_point_60}
-                            100->{R.drawable.marker_point_to_point_100}
-                            50->{R.drawable.marker_point_to_point_50}
-
-                            0->{R.drawable.marker_point_to_point_0}
-                            10->{R.drawable.marker_point_to_point_10}
-                            15->{R.drawable.marker_point_to_point_15}
-                            20->{R.drawable.marker_point_to_point_20}
-                            25->{R.drawable.marker_point_to_point_25}
-                            30->{R.drawable.marker_point_to_point_30}
-                            35->{R.drawable.marker_point_to_point_35}
-                            40->{R.drawable.marker_point_to_point_40}
-                            45->{R.drawable.marker_point_to_point_45}
-                            55->{R.drawable.marker_point_to_point_55}
-                            65->{R.drawable.marker_point_to_point_65}
-                            70->{R.drawable.marker_point_to_point_70}
-                            80->{R.drawable.marker_point_to_point_80}
-                            90->{R.drawable.marker_point_to_point_90}
-                            110->{R.drawable.marker_point_to_point_110}
-                            120->{R.drawable.marker_point_to_point_120}
-                            130->{R.drawable.marker_point_to_point_130}
-                            140->{R.drawable.marker_point_to_point_140}
-                            else->{R.drawable.marker_point_to_point_0}
-                        }))
-                    7-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_red_traffic_tight))
-                    10-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_marker_road_static_camera))
-                    11-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.marker_point_to_point_0))
-                    405-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.marker_static_camera_not_active))
-                    1-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,
-                        when(i.reportSpeedLimit){
-                            60->{
-                                R.drawable.marker_road_camera_60
-                            }
-                            100->{R.drawable.marker_road_camera_100}
-                            50->{R.drawable.marker_road_camera_50}
-
-                            0->{R.drawable.marker_road_camera_0}
-                            10->{R.drawable.marker_road_camera_10}
-                            15->{R.drawable.marker_road_camera_15}
-                            20->{R.drawable.marker_road_camera_20}
-                            25->{R.drawable.marker_road_camera_25}
-                            30->{R.drawable.marker_road_camera_30}
-                            35->{R.drawable.marker_road_camera_35}
-                            40->{R.drawable.marker_road_camera_40}
-                            45->{R.drawable.marker_road_camera_45}
-                            55->{R.drawable.marker_road_camera_55}
-                            65->{R.drawable.marker_road_camera_65}
-                            70->{R.drawable.marker_road_camera_70}
-                            80->{R.drawable.marker_road_camera_80}
-                            90->{R.drawable.marker_road_camera_90}
-                            110->{R.drawable.marker_road_camera_110}
-                            120->{R.drawable.marker_road_camera_120}
-                            130->{R.drawable.marker_road_camera_130}
-                            140->{R.drawable.marker_road_camera_140}
-
-
-                            else->{R.drawable.marker_road_camera_0}
-                        }
-
-                    ))
-                    else-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_cee_one))
+                var bitmap : Bitmap? = null
+                getReportTypeByReportTypeAndSpeedLimit(i.reportType,i.reportSpeedLimit)?.let {
+                    bitmap = convertDrawableToBitMap(AppCompatResources.getDrawable(app,it))
                 }
-                val jsonObject = JSONObject()
-                jsonObject.put("report",i.reportId)
-                jsonObject.put("lat", i.geoLocation?.get(0) ?: 0.0)
-                jsonObject.put("lon", i.geoLocation?.get(1) ?: 0.0)
-                val pointAnnotationOptions : PointAnnotationOptions = PointAnnotationOptions()
-                    .withPoint(Point.fromLngLat(i.geoLocation!![1] as Double, i.geoLocation!![0] as Double))
-                    .withData(Gson().fromJson(jsonObject.toString(),JsonElement::class.java))
-                    .withIconImage(bitmap)
-                    .withIconSize(0.75)
-                    .withIconOffset(listOf(0.0,10.0))
-                    .withIconAnchor(IconAnchor.BOTTOM)
 
-                //.withIconImage("marker_point_to_point_01")
-                markerList.add(pointAnnotationOptions)
+//                val bitmap = when(i.reportType){
+//                    2->{ convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.marker_crash))}
+//                    3-> {
+//                        convertDrawableToBitMap(
+//                            AppCompatResources.getDrawable(
+//                                app,
+//                                R.drawable.marker_police
+//                            )
+//                        )
+//                    }
+//                    4-> {
+//                        convertDrawableToBitMap(
+//                            AppCompatResources.getDrawable(
+//                                app,
+//                                R.drawable.marker_construction
+//                            )
+//                        )
+//                    }
+//                    5-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,
+//                        when(i.reportSpeedLimit){
+//                            60->{R.drawable.marker_static_camera_60}
+//                            100->{R.drawable.marker_static_camera_100}
+//                            50->{R.drawable.marker_static_camera_50}
+//
+//                            0->{R.drawable.marker_static_camera_0}
+//                            10->{R.drawable.marker_static_camera_10}
+//                            15->{R.drawable.marker_static_camera_15}
+//                            20->{R.drawable.marker_static_camera_20}
+//                            25->{R.drawable.marker_static_camera_25}
+//                            30->{R.drawable.marker_static_camera_30}
+//                            35->{R.drawable.marker_static_camera_35}
+//                            40->{R.drawable.marker_static_camera_40}
+//                            45->{R.drawable.marker_static_camera_45}
+//                            55->{R.drawable.marker_static_camera_55}
+//                            65->{R.drawable.marker_static_camera_65}
+//                            70->{R.drawable.marker_static_camera_70}
+//                            80->{R.drawable.marker_static_camera_80}
+//                            90->{R.drawable.marker_static_camera_90}
+//                            110->{R.drawable.marker_static_camera_110}
+//                            120->{R.drawable.marker_static_camera_120}
+//                            130->{R.drawable.marker_static_camera_130}
+//                            140->{R.drawable.marker_static_camera_140}
+//                            else->{R.drawable.marker_static_camera_0}
+//                        }
+//
+//                    ))
+//                    6-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,
+//                        when(i.reportSpeedLimit){
+//                            60->{R.drawable.marker_point_to_point_60}
+//                            100->{R.drawable.marker_point_to_point_100}
+//                            50->{R.drawable.marker_point_to_point_50}
+//
+//                            0->{R.drawable.marker_point_to_point_0}
+//                            10->{R.drawable.marker_point_to_point_10}
+//                            15->{R.drawable.marker_point_to_point_15}
+//                            20->{R.drawable.marker_point_to_point_20}
+//                            25->{R.drawable.marker_point_to_point_25}
+//                            30->{R.drawable.marker_point_to_point_30}
+//                            35->{R.drawable.marker_point_to_point_35}
+//                            40->{R.drawable.marker_point_to_point_40}
+//                            45->{R.drawable.marker_point_to_point_45}
+//                            55->{R.drawable.marker_point_to_point_55}
+//                            65->{R.drawable.marker_point_to_point_65}
+//                            70->{R.drawable.marker_point_to_point_70}
+//                            80->{R.drawable.marker_point_to_point_80}
+//                            90->{R.drawable.marker_point_to_point_90}
+//                            110->{R.drawable.marker_point_to_point_110}
+//                            120->{R.drawable.marker_point_to_point_120}
+//                            130->{R.drawable.marker_point_to_point_130}
+//                            140->{R.drawable.marker_point_to_point_140}
+//                            else->{R.drawable.marker_point_to_point_0}
+//                        }))
+//                    7-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_red_traffic_tight))
+//                    10-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_marker_road_static_camera))
+//                    11-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.marker_point_to_point_0))
+//                    405-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.marker_static_camera_not_active))
+//                    406-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_disabled_marker_point_to_point_camera))
+//                    1-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,
+//                        when(i.reportSpeedLimit){
+//                            60->{
+//                                R.drawable.marker_road_camera_60
+//                            }
+//                            100->{R.drawable.marker_road_camera_100}
+//                            50->{R.drawable.marker_road_camera_50}
+//
+//                            0->{R.drawable.marker_road_camera_0}
+//                            10->{R.drawable.marker_road_camera_10}
+//                            15->{R.drawable.marker_road_camera_15}
+//                            20->{R.drawable.marker_road_camera_20}
+//                            25->{R.drawable.marker_road_camera_25}
+//                            30->{R.drawable.marker_road_camera_30}
+//                            35->{R.drawable.marker_road_camera_35}
+//                            40->{R.drawable.marker_road_camera_40}
+//                            45->{R.drawable.marker_road_camera_45}
+//                            55->{R.drawable.marker_road_camera_55}
+//                            65->{R.drawable.marker_road_camera_65}
+//                            70->{R.drawable.marker_road_camera_70}
+//                            80->{R.drawable.marker_road_camera_80}
+//                            90->{R.drawable.marker_road_camera_90}
+//                            110->{R.drawable.marker_road_camera_110}
+//                            120->{R.drawable.marker_road_camera_120}
+//                            130->{R.drawable.marker_road_camera_130}
+//                            140->{R.drawable.marker_road_camera_140}
+//                            else->{R.drawable.marker_road_camera_0}
+//                        }
+//                    ))
+//                    8-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_marker_road_hazard))
+//                    else-> null
+//                }
+                bitmap?.let{
+                    val jsonObject = JSONObject()
+                    jsonObject.put("report",i.reportId)
+                    jsonObject.put("lat", i.geoLocation?.get(0) ?: 0.0)
+                    jsonObject.put("lon", i.geoLocation?.get(1) ?: 0.0)
+                    val pointAnnotationOptions : PointAnnotationOptions = PointAnnotationOptions()
+                        .withPoint(Point.fromLngLat(i.geoLocation!![1] as Double, i.geoLocation!![0] as Double))
+                        .withData(Gson().fromJson(jsonObject.toString(),JsonElement::class.java))
+                        .withIconImage(it)
+                        .withIconSize(0.75)
+                        .withDraggable(draggable = (i.reportType == 1||i.reportType == 2||i.reportType == 3||i.reportType == 4) && currentUserTier.value == UserTiers.ADMIN)
+                        .withIconOffset(listOf(0.0,10.0))
+                        .withIconAnchor(IconAnchor.BOTTOM)
+                    markerList.add(pointAnnotationOptions)
+                }
             }
-
             pointAnnotationManager?.create(markerList)
             }
         }catch (e:Exception){
-
+            Log.d("VIEW_MODEL_LOGS",e.message.toString())
         }
     }
     lateinit var handler: Handler
     private var seconds = 0
     private var pauseOffset: Int = 0
     var showTripDialog =  mutableStateOf(false)
-//    var lrouteCoordinates = ArrayList<Point>()
      fun startTimer() {
         handler.post(object : Runnable {
             override fun run() {
                 seconds++
                 handler.postDelayed(this, 1000)
                 timeRemain.value = seconds
-                Log.d("TIMER_COUNT",seconds.toString())
             }
         })
 
         isTimerRunning.value = true
     }
-     fun pauseTimer() {
+     private fun pauseTimer() {
         handler.removeCallbacksAndMessages(null)
         pauseOffset = seconds
         isTimerRunning.value = false
     }
-     fun resetTimer() {
+     private fun resetTimer() {
         if (isTimerRunning.value) {
             pauseTimer()
         }
@@ -710,48 +757,48 @@ class HomeViewModel @Inject  constructor(
         showTripDialog.value = false
     }
 
-    var tripSize = -1
-     suspend fun saveTrip() {
-         Log.d("DEBUG_TRIP_RETR_SIZE", "hi")
-        isTripStarted.value = false
-        trip.value.endTime = Date()
-        trip.value.distance = MyLocationService.LSS.TripDistance.value
-        trip.value.maxSpeed = MyLocationService.LSS.TripMaxSpeed.value
-        trip.value.startTime = MyLocationService.LSS.TripStartTime
-        trip.value.speedAverage = MyLocationService.LSS.TripAverageSpeed.value
-        trip.value.listOfLatLon.addAll(lrouteCoordinates)
-         dataStoreRepository.tripList.collect{trips->
-             Log.d("DEBUG_TRIP_RETR_SIZE", trips.size.toString())
-             if (tripSize+1 != trips.size){
-                 tripSize = trips.size
-
-                 val templ = ArrayList<Trip?>()
-                 templ.addAll(trips)
-                 templ.add(trip.value).let {
-                     saveTrip(templ)
-                     lrouteCoordinates.clear()
-                     resetTrip()
-                     resetTimer()
+    private var tripSize = -1
+     suspend fun saveTrip(eTrip:Trip? = null) {
+         if (eTrip != null){
+             eTrip.let {
+                 dataStoreRepository.tripList.collect{trips->
+                     if (tripSize+1 != trips.size){
+                         tripSize = trips.size
+                         val templ = ArrayList<Trip?>()
+                         templ.addAll(trips)
+                         templ.add(eTrip)
+                         saveTrip(templ)
+                     }
                  }
              }
-
+         }else{
+             isTripStarted.value = false
+             trip.value.endTime = Date()
+             trip.value.distance = MyLocationService.LSS.TripDistance.value
+             trip.value.maxSpeed = MyLocationService.LSS.TripMaxSpeed.value
+             trip.value.startTime = MyLocationService.LSS.TripStartTime
+             trip.value.speedAverage = MyLocationService.LSS.TripAverageSpeed.value
+             trip.value.listOfLatLon.addAll(lrouteCoordinates)
+             dataStoreRepository.tripList.collect{trips->
+                 if (tripSize+1 != trips.size){
+                     tripSize = trips.size
+                     val templ = ArrayList<Trip?>()
+                     templ.addAll(trips)
+                     templ.add(trip.value).let {
+                         saveTrip(templ)
+                         lrouteCoordinates.clear()
+                         resetTrip()
+                         resetTimer()
+                     }
+                 }
+             }
          }
-
     }
-
-
-
-
 
     private fun createDotMarkerOnMap(repo : List<NewReport>){
         try {
             markerList = ArrayList()
             pointAnnotationManager?.deleteAll()
-//            pointAnnotationManager?.addClickListener(OnPointAnnotationClickListener {
-//                    annotation : PointAnnotation ->
-//                onClickReport(annotation)
-//                true
-//            })
             for (i in repo){
                 val bitmap = when(i.reportType){
                     1->{ convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.dot_road_camera))}
@@ -764,6 +811,7 @@ class HomeViewModel @Inject  constructor(
                     10-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.dot_road_camera))
                     11-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.dot_road_camera))
                     405-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.dot_disable_camera))
+                    406-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.dot_disable_camera))
                     else-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.dot_disable_camera))
                 }
                 val jsonObject = JSONObject()
@@ -777,41 +825,14 @@ class HomeViewModel @Inject  constructor(
                     .withIconSize(1.25)
                     .withIconOffset(listOf(0.0,10.0))
                     .withIconAnchor(IconAnchor.BOTTOM)
-
-                //.withIconImage("marker_point_to_point_01")
                 markerList.add(pointAnnotationOptions)
             }
 
             pointAnnotationManager?.create(markerList)
         }catch (e:Exception){
-
+            Log.d("VIEW_MODEL_LOGS",e.message.toString())
         }
 
-    }
-    private fun onClickReport(annotation: PointAnnotation) {
-
-        reportClicked.value = true
-        val reportArray = annotation.getData()?.asJsonObject
-        val repo = reportArray?.get("report")
-        val lat = reportArray?.get("lat")?.asDouble
-        val lon = reportArray?.get("lon")?.asDouble
-        reportId.value = "${repo?.asString}"
-        whichButtonClicked.value = 4
-        if (lat != null && lon != null){
-            onCameraTrackingDismissed()
-            mapView.getMapboxMap().cameraState
-            val cameraPosition = CameraOptions.Builder()
-                .zoom(14.5)
-                .center(
-                    Point.fromLngLat(
-                        lon,lat
-                    )
-                )
-                .build()
-            mapView.getMapboxMap().setCamera(cameraPosition)
-
-        }
-        Log.d("REPO-R0","${repo?.asString}")
     }
     private fun convertDrawableToBitMap(sourceDrawable : Drawable?) : Bitmap {
         return if (sourceDrawable is BitmapDrawable){
@@ -831,22 +852,26 @@ class HomeViewModel @Inject  constructor(
     }
     fun loadUserInfoFromFirebase(): Flow<ResponseDto> {
         return callbackFlow {
-            val uid = auth.currentUser?.uid
-            if (uid != null){
-                val docRef = db.collection(DB_REF_USER).document(uid)
-                val source = Source.CACHE
-                docRef.get(source).addOnSuccessListener { task ->
-                    if (task.data != null){
-                        userInfo.value = task.toObject(UserNew::class.java)!!
-                        trySend(ResponseDto(isSuccess = true,""))
-                    }else{
-                        trySend(ResponseDto(isSuccess = false,"Un error"))
+            try {
+                val uid = auth.currentUser?.uid
+                if (uid != null){
+                    val docRef = db.collection(DB_REF_USER).document(uid)
+                    docRef.get().addOnSuccessListener { task ->
+                        if (task.data != null){
+                            userInfo.value = task.toObject(UserNew::class.java)!!
+                            trySend(ResponseDto(isSuccess = true,""))
+                        }else{
+                            trySend(ResponseDto(isSuccess = false,"Un error"))
+                        }
+                    }.addOnFailureListener {
+                        trySend(ResponseDto(isSuccess = false,it.message.toString()))
                     }
-                }.addOnFailureListener {
-                    trySend(ResponseDto(isSuccess = false,it.message.toString()))
+                }else{
+                    trySend(ResponseDto(isSuccess = false,"unauthorized"))
                 }
-            }else{
-                trySend(ResponseDto(isSuccess = false,"Un error"))
+            }catch (e:Exception){
+                Log.d("DEBUG_HOME_VIEW_MODEL", "loadUserInfoFromFirebase() : ${e.message.toString()}")
+                trySend(ResponseDto(isSuccess = false,"${e.message}"))
             }
             awaitClose{close()}
         }
@@ -854,15 +879,15 @@ class HomeViewModel @Inject  constructor(
     fun vibrate(context :Context){
         val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         if (Build.VERSION.SDK_INT >= 26) {
-            vibrator.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.EFFECT_TICK))
+            vibrator.vibrate(VibrationEffect.createOneShot(75, VibrationEffect.EFFECT_TICK))
         } else {
-            vibrator.vibrate(200)
+            vibrator.vibrate(75)
         }
     }
     private fun handleException(exception : Exception? = null , customMessage: String = "") {
         exception?.printStackTrace()
         val errorMsg = exception?.localizedMessage ?: ""
-        val message = if (customMessage.isEmpty()) errorMsg else "$customMessage : $errorMsg"
+        val message = if (customMessage=="") errorMsg else "$customMessage : $errorMsg"
         responseMessage.value = Event(message)
     }
     private fun getAddress(lat: Double, lng: Double, context: Context): String {
@@ -876,6 +901,17 @@ class HomeViewModel @Inject  constructor(
             "Unknown"
         }
     }
+
+    suspend fun getSingleReportForSharedLink(reportId: String): NewReport? {
+        val docRef = db.collection(
+            if (!isDebugMode.value!!) {
+                DB_REF_REPORT
+            } else {
+                DB_REF_REPORT_DEBUG
+            }
+        ).document(reportId).get().await()
+        return docRef.toObject(NewReport::class.java)
+    }
     fun getSingleReport(reportId: String) :Flow<SingleCustomReport>  {
         return callbackFlow {
             val docRef = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(reportId)
@@ -885,52 +921,47 @@ class HomeViewModel @Inject  constructor(
             var disLikeCount = 0
             var isLikedd : Boolean? = null
             try {
-                auth.currentUser?.let {
-                    val allFeedbacks = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(reportId).collection("Feedback").get().await().documents
-                    val alertedCount = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(reportId).collection("Alerted").get().await().documents.size
-                    allFeedbacks.forEach { feedback->
-                        if (feedback.get("feedbackType") as Boolean){
-                            likeCont +=1
-                        }else{
-                            disLikeCount +=1
-                        }
-                        if (feedback.get("feedbackByUID") as String == it.uid){
-                            isLikedd = feedback.get("feedbackType") as Boolean
-                        }
+                val allFeedbacks = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(reportId).collection("Feedback").get().await().documents
+                val alertedCount = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(reportId).collection("Alerted").get().await().documents.size
+                allFeedbacks.forEach { feedback->
+                    if (feedback.get("feedbackType") as Boolean){
+                        likeCont +=1
+                    }else{
+                        disLikeCount +=1
                     }
-                    val source = Source.CACHE
-                    docRef.get(source).addOnSuccessListener { task ->
-                        val geoLocation = task.get("geoLocation") as List<*>?
-                        if (geoLocation != null){
-                            val lat = geoLocation[0] as Double
-                            val lng = geoLocation[1] as Double
+                    if (feedback.get("feedbackByUID") as String == auth.currentUser?.uid){
+                        isLikedd = feedback.get("feedbackType") as Boolean
+                    }
+                }
+                val source = Source.CACHE
+                docRef.get(source).addOnSuccessListener { task ->
+                    val geoLocation = task.get("geoLocation") as List<*>?
+                    if (geoLocation != null){
+                        val lat = geoLocation[0] as Double
+                        val lng = geoLocation[1] as Double
+                        loc.latitude = lat
+                        loc.longitude = lng
+                        trySend(
+                            SingleCustomReport(
+                                reportByUID = task.data?.get("reportByUID") as String,
+                                isSuccess = true,
+                                reportLocation = loc,
+                                isReportOwner = task.data?.get("reportByUID") as String == auth.currentUser?.uid,
+                                reportTime = incidentTime(task.data?.get("reportTimeStamp") as Timestamp,app),
+                                reportAddress = task.data?.get("reportAddress") as String,
+                                reportType = (task.data?.get("reportType") as Long).toInt(),
+                                reportSpeedLimit = (task.data?.get("reportSpeedLimit") as Long?)?.toInt(),
+                                alertedCount = alertedCount,
 
-                            loc.latitude = lat
-                            loc.longitude = lng
-
-                            trySend(
-                                SingleCustomReport(
-                                    reportByUID = task.data?.get("reportByUID") as String,
-                                    isSuccess = true,
-                                    reportLocation = loc,
-                                    isReportOwner = task.data?.get("reportByUID") as String == auth.currentUser!!.uid,
-                                    reportTime = incidentTime(task.data?.get("reportTimeStamp") as Timestamp,app),
-                                    reportAddress = task.data?.get("reportAddress") as String,
-                                    reportType = (task.data?.get("reportType") as Long).toInt(),
-                                    reportSpeedLimit = (task.data?.get("reportSpeedLimit") as Long?)?.toInt(),
-                                    alertedCount = alertedCount,
-
-                                    feedbackLikeCount = likeCont,
-                                    feedbackDisLikeCount = disLikeCount,
-                                    isLiked = isLikedd
-                                )
+                                feedbackLikeCount = likeCont,
+                                feedbackDisLikeCount = disLikeCount,
+                                isLiked = isLikedd
                             )
-                        }
+                        )
                     }
-                        .addOnFailureListener {
-                            Log.d("ERROR-55F", "${it.message}")
-                            trySend(SingleCustomReport(isSuccess = false))
-                        }
+                }.addOnFailureListener {
+                    Log.d("ERROR-55F", "${it.message}")
+                    trySend(SingleCustomReport(isSuccess = false))
                 }
             }catch (e:Exception){
                 Log.d("DEBUG_USER_ID",e.message.toString())
@@ -940,36 +971,45 @@ class HomeViewModel @Inject  constructor(
         }
     }
     suspend fun getReportOwnerByUid(uid:String):UserDao{
-        val userRef = db.collection(DB_REF_USER).document(uid).get().await()
-        Log.d("DEBUG_GET_REPORT_OWNER_INFO",userRef.get("userName").toString())
-        return UserDao (
-            userName = userRef.get("username") as? String? ?:
-            "",
-            userType = (userRef.get("userType") as? Long?)?.toInt() ?:
-            0
-        )
+        return try {
+            val userRef = db.collection(DB_REF_USER).document(uid).get().await()
+            UserDao (
+                userName = userRef.get("username") as? String? ?: "",
+                userType = (userRef.get("userType") as? Long?)?.toInt() ?: 0
+            )
+        }catch (e:Exception){
+            Log.d("DEBUG_HOME_VIEW_MODEL", "getReportOwnerByUid() : ${e.message.toString()}")
+            UserDao()
+        }
+
     }
     fun uploadPhotos(localUri : Uri) : Flow<ResponseDto>{
         return callbackFlow {
-            auth.uid?.let { it1 ->
-                val imageRef = storage.reference.child("profile_images/${it1}/${localUri.lastPathSegment}")
-                val uploadTask  = imageRef.putFile(localUri)
-                uploadTask.addOnSuccessListener {
-                    Log.i(ContentValues.TAG, "Image Uploaded $imageRef")
-                    val downloadUrl = imageRef.downloadUrl
-                    downloadUrl.addOnSuccessListener {
-                            remoteUri ->
-                        db.collection(DB_REF_USER).document(it1).update("userAvatar",remoteUri.toString()).addOnSuccessListener {
-                            trySend(ResponseDto(isSuccess = true, serverMessage = "Image updated successfully."))
-                        }.addOnFailureListener {
-                            trySend(ResponseDto(isSuccess = false, serverMessage = "${it.message}"))
+            try {
+                auth.uid?.let { it1 ->
+                    val imageRef = storage.reference.child("profile_images/${it1}/${localUri.lastPathSegment}")
+                    val uploadTask  = imageRef.putFile(localUri)
+                    uploadTask.addOnSuccessListener {
+                        Log.i(ContentValues.TAG, "Image Uploaded $imageRef")
+                        val downloadUrl = imageRef.downloadUrl
+                        downloadUrl.addOnSuccessListener {
+                                remoteUri ->
+                            db.collection(DB_REF_USER).document(it1).update("userAvatar",remoteUri.toString()).addOnSuccessListener {
+                                trySend(ResponseDto(isSuccess = true, serverMessage = "Image updated successfully."))
+                            }.addOnFailureListener {
+                                trySend(ResponseDto(isSuccess = false, serverMessage = "${it.message}"))
+                            }
                         }
                     }
+                    uploadTask.addOnFailureListener {e->
+                        trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                    }
                 }
-                uploadTask.addOnFailureListener {
-                    trySend(ResponseDto(isSuccess = false, serverMessage = "${it.message}"))
-                }
+            }catch (e:Exception){
+                trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                Log.d("DEBUG_HOME_VIEW_MODEL", "updateReportLocation() : ${e.message.toString()}")
             }
+
             awaitClose{ close()}
         }
 
@@ -988,25 +1028,30 @@ class HomeViewModel @Inject  constructor(
             mode != Settings.Secure.LOCATION_MODE_OFF
         }
     }
-    fun isLogin(): Boolean {
-        if (auth.currentUser != null){
-            return true
-        }
-        return false
-    }
+//    fun isLogin(): Boolean {
+//        if (auth.currentUser != null){
+//            return true
+//        }
+//        return false
+//    }
     fun updateUserInfo(fullName: String, phone: String, email: String, gender: String) : Flow<ResponseDto> {
         return callbackFlow {
-            auth.uid?.let {
-                val user : HashMap<String, Any> = HashMap<String, Any>()
-                user["username"] = fullName
-                user["userEmail"] = email
-                user["phoneNumber"] = phone
-                user["userGender"] = gender
-                db.collection(DB_REF_USER).document(it).update(user).addOnSuccessListener {
-                    trySend(ResponseDto(isSuccess = true, serverMessage = "User Info updated successfully."))
-                }.addOnFailureListener {
-                    trySend(ResponseDto(isSuccess = false, serverMessage = "${it.message}"))
+            try {
+                auth.uid?.let {
+                    val user : HashMap<String, Any> = HashMap<String, Any>()
+                    user["username"] = fullName
+                    user["userEmail"] = email
+                    user["phoneNumber"] = phone
+                    user["userGender"] = gender
+                    db.collection(DB_REF_USER).document(it).update(user).addOnSuccessListener {
+                        trySend(ResponseDto(isSuccess = true, serverMessage = "User Info updated successfully."))
+                    }.addOnFailureListener {e->
+                        trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                    }
                 }
+            }catch (e:Exception){
+                trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                Log.d("DEBUG_HOME_VIEW_MODEL", "updateReportLocation() : ${e.message.toString()}")
             }
             awaitClose{close()}
         }
@@ -1014,7 +1059,7 @@ class HomeViewModel @Inject  constructor(
     fun fetchReports(latt: Double, lonn: Double) {
         try {
             val scope = CoroutineScope(Dispatchers.Default)
-            val radius = 25
+            val radius = reportSightRadius.value
 
             val center =  GeoLocation(latt, lonn)
             val radiusInM = radius * 1000.0
@@ -1082,7 +1127,7 @@ class HomeViewModel @Inject  constructor(
     }
     private suspend fun dataToList(task : Task<QuerySnapshot>,i:Int, latitude: Double, longitude: Double,size:Int){
         try {
-            val radius = 25
+            val radius = reportSightRadius.value
             val center =  GeoLocation(latitude, longitude)
             val radiusInM = radius * 1000.0
 
@@ -1101,11 +1146,11 @@ class HomeViewModel @Inject  constructor(
                                 val report = document.toObject(NewReport::class.java)
                                 report?.let { repo ->
                                     tempReports1.add(repo)
-                                    if (report.reportType != 405 && report.reportType != 7) {
+                                    if (report.reportType != 405 && report.reportType != 7&& report.reportType != 406) {
                                         tempGeofence1.add(
                                             Geofence.Builder()
                                                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                                                .setRequestId("${report.reportId},${0}")
+                                                .setRequestId("${report.reportId}")
                                                 .setCircularRegion(
                                                     report.geoLocation?.get(0) as Double,
                                                     report.geoLocation?.get(1) as Double,
@@ -1136,11 +1181,11 @@ class HomeViewModel @Inject  constructor(
                                 val report = document.toObject(NewReport::class.java)
                                 report?.let { repo ->
                                     tempReports2.add(repo)
-                                    if (report.reportType != 405 && report.reportType != 7) {
+                                    if (report.reportType != 405 && report.reportType != 7&& report.reportType != 406) {
                                         tempGeofence2.add(
                                             Geofence.Builder()
                                                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                                                .setRequestId("${report.reportId},${0}")
+                                                .setRequestId("${report.reportId}")
                                                 .setCircularRegion(
                                                     report.geoLocation?.get(0) as Double,
                                                     report.geoLocation?.get(1) as Double,
@@ -1170,11 +1215,11 @@ class HomeViewModel @Inject  constructor(
                                 val report = document.toObject(NewReport::class.java)
                                 report?.let { repo ->
                                     tempReports3.add(repo)
-                                    if (report.reportType != 405 && report.reportType != 7) {
+                                    if (report.reportType != 405 && report.reportType != 7 && report.reportType != 406) {
                                         tempGeofence3.add(
                                             Geofence.Builder()
                                                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                                                .setRequestId("${report.reportId},${0}")
+                                                .setRequestId("${report.reportId}")
                                                 .setCircularRegion(
                                                     report.geoLocation?.get(0) as Double,
                                                     report.geoLocation?.get(1) as Double,
@@ -1204,11 +1249,11 @@ class HomeViewModel @Inject  constructor(
                                 val report = document.toObject(NewReport::class.java)
                                 report?.let { repo ->
                                     tempReports4.add(repo)
-                                    if (report.reportType != 405 && report.reportType != 7) {
+                                    if (report.reportType != 405 && report.reportType != 7&& report.reportType != 406) {
                                         tempGeofence4.add(
                                             Geofence.Builder()
                                                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                                                .setRequestId("${report.reportId},${0}")
+                                                .setRequestId("${report.reportId}")
                                                 .setCircularRegion(
                                                     report.geoLocation?.get(0) as Double,
                                                     report.geoLocation?.get(1) as Double,
@@ -1242,41 +1287,33 @@ class HomeViewModel @Inject  constructor(
             Log.d("ERROR-11232",e.message.toString())
         }
     }
-    fun addReport(speedLimit:Int?) {
+    fun addReport(speedLimit:Int?,reportType: Int = 1) {
         viewModelScope.launch {
-            fusedLocationProviderClient.lastLocation.addOnCompleteListener {
-                if (it.isComplete) {
-                    if (it.result != null) {
-                        if (!Utils.isMockLocationEnabled(it.result)){
-                            if(placeReportValidation(reportCountPerOneHour.value!!, loadTimeOfLastReport.value?:0)){
-                                addReport(bearing = it.result.bearing,geoPoint = GeoPoint(it.result.latitude,it.result.longitude), reportType = 1, speedLimit = speedLimit)
+            if (ActivityCompat.checkSelfPermission(app, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(app, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                fusedLocationProviderClient.lastLocation.addOnCompleteListener {
+                    if (it.isComplete) {
+                        if (it.result != null) {
+                            if (!Utils.isMockLocationEnabled(it.result)){
+                                if(placeReportValidation(reportCountPerOneHour.value, loadTimeOfLastReport.value?:0)){
+                                    addReport(bearing = it.result.bearing,geoPoint = GeoPoint(it.result.latitude,it.result.longitude), reportType = reportType, speedLimit = speedLimit)
+                                }else{
+                                    isReachedQuotaDialog.value = true
+                                }
                             }else{
-                                isReachedQuotaDialog.value = true
+                                Toast.makeText(app,"Sorry unable, Please turn off mock location.", Toast.LENGTH_LONG).show()
                             }
                         }else{
-                            Toast.makeText(app,"Sorry unable, Please turn off mock location.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(app,"Sorry Unable", Toast.LENGTH_LONG).show()
                         }
-                    }else{
-                        Toast.makeText(app,"Sorry Unable", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-        }
-    }
-    suspend fun getCurrentLocation():Location?{
-        return if (ActivityCompat.checkSelfPermission(
-                app.applicationContext,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                app.applicationContext,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            null
-        }else{
-            fusedLocationProviderClient.lastLocation.await()
-        }
 
+        }
     }
     private fun addGeofences(geo: List<Geofence>) {
         if(geo.isNotEmpty()){
@@ -1318,28 +1355,40 @@ class HomeViewModel @Inject  constructor(
     @OptIn(DelicateCoroutinesApi::class)
     @RequiresApi(Build.VERSION_CODES.S)
     @SuppressLint("MissingPermission")
-    fun getJsonAsync(lat: Double, lon: Double) = GlobalScope.async{
-        if (MetricsUtils.isOnline(app)){
-            val respo = URL("https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=02c2bac30e0194dff2c04877257c322e").readText()
-            val data = Gson().fromJson(respo,WeatherDto::class.java)
-            temperature.value = (data.main?.temp?.minus(273))?.toInt()
-            Log.d("OWAPID",data.name.toString() )
+    fun getJsonAsync() = GlobalScope.async{
+        try {
+            if (MetricsUtils.isOnline(app)){
+                val respo = URL("https://api.openweathermap.org/data/2.5/weather?lat=${lastLocation.value.latitude}&lon=${lastLocation.value.longitude}&appid=02c2bac30e0194dff2c04877257c322e").readText()
+                val data = Gson().fromJson(respo,WeatherDto::class.java)
+                temperature.value = (data.main?.temp?.minus(273))?.toInt()
+                Log.d("OWAPID",data.name.toString() )
+            }else{
+
+            }
+        }catch (e:Exception){
+            Log.d("HOME_VIEW_MODEL_002",e.message.toString())
         }
+
     }
     fun getUid():String?{
         return auth.currentUser?.uid
     }
 
     fun saveAlerts(info : SaveUserInfoInAlerted){
-        auth.currentUser?.let {
-            val alert : HashMap<String, Any> = HashMap<String, Any>()
-            alert["lastSeen"] = FieldValue.serverTimestamp()
-            alert["speedWhenEntered"] = speed.value
-            alert["userAvatar"] = info.userAvatar
-            alert["userId"] = it.uid
-            alert["username"] = info.userName
-            db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(info.reportId).collection(Constants.DB_REF_ALERTED).document(it.uid).set(alert)
+        try {
+            auth.currentUser?.let {
+                val alert : HashMap<String, Any> = HashMap<String, Any>()
+                alert["lastSeen"] = FieldValue.serverTimestamp()
+                alert["speedWhenEntered"] = speed.value
+                alert["userAvatar"] = info.userAvatar
+                alert["userId"] = it.uid
+                alert["username"] = info.userName
+                db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(info.reportId).collection(Constants.DB_REF_ALERTED).document(it.uid).set(alert)
+            }
+        }catch (e:Exception){
+            Log.d("HOME_VIEW_MODEL_002",e.message.toString())
         }
+
     }
 
     private suspend fun setUserStatistics(): Flow<ResponseDto> {
@@ -1364,10 +1413,6 @@ class HomeViewModel @Inject  constructor(
                             }
                     }
                 }
-//                retrieveStatistics()
-//                userStatistics.value?.let {statistic->
-//
-//                }
             }catch (e:Exception){
                 trySend(ResponseDto(isSuccess = false, serverMessage = e.message.toString()))
                 Log.d("HOME_VIEW_MODEL_002",e.message.toString())
@@ -1399,19 +1444,6 @@ class HomeViewModel @Inject  constructor(
             userAvatar = userAvatar
         )
     }
-    fun setOnlineStatus(){
-        FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
-            if (!task.isSuccessful) {
-                return@OnCompleteListener
-            }
-            val token = task.result
-            val user : HashMap<String, Any> = HashMap<String, Any>()
-            user["pushId"] = token
-            user["status"] = "online"
-//            user["uniqueDeviceID"] = Utils.getDeviceUniqueID(app)
-            db.collection(DB_REF_USER).document(auth.currentUser?.uid!!).update(user)
-        })
-    }
     fun extendReportTime(reportId: String) {
         val report : HashMap<String, Any> = HashMap<String, Any>()
         report["reportTimeStamp"] = Timestamp.now()
@@ -1419,7 +1451,8 @@ class HomeViewModel @Inject  constructor(
     }
     fun completeUserRegister(userName:String) : Flow<ResponseDto> {
         return callbackFlow {
-            if (userName.length in 2..31){
+            try {
+                if (userName.length in 2..31){
 //                if(containsSpecialCharacters(userName)){
                     if (!startsWithCee(userName)){
                         auth.uid?.let { uID ->
@@ -1437,23 +1470,34 @@ class HomeViewModel @Inject  constructor(
 //                }else{
 //                    trySend(ResponseDto(isSuccess = false, serverMessage = "invalid full name"))
 //                }
-            }else{
-                trySend(ResponseDto(isSuccess = false, serverMessage = "full name length invalid."))
+                }else{
+                    trySend(ResponseDto(isSuccess = false, serverMessage = "full name length invalid."))
+                }
+            }catch (e:Exception){
+                trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                Log.d("DEBUG_HOME_VIEW_MODEL", "updateReportLocation() : ${e.message}")
             }
+
             awaitClose{close()}
         }
     }
     fun updateReportSpeedLimit(speedLimit: Int?,reportId: String): Flow<ResponseDto> {
         return callbackFlow {
-            if (speedLimit != null && reportId != ""){
-                db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(reportId).update("reportSpeedLimit",speedLimit).addOnSuccessListener {
-                    trySend(ResponseDto(isSuccess = true, serverMessage = "Speed limit updated successfully to $speedLimit."))
-                }.addOnFailureListener {exception->
-                    trySend(ResponseDto(isSuccess = false, serverMessage = "${exception.message}"))
+            try {
+                if (speedLimit != null && reportId != ""){
+                    db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(reportId).update("reportSpeedLimit",speedLimit).addOnSuccessListener {
+                        trySend(ResponseDto(isSuccess = true, serverMessage = "Speed limit updated successfully to $speedLimit."))
+                    }.addOnFailureListener {exception->
+                        trySend(ResponseDto(isSuccess = false, serverMessage = "${exception.message}"))
+                    }
+                }else{
+                    trySend(ResponseDto(isSuccess = false, serverMessage = "input Invalid or empty"))
                 }
-            }else{
-                trySend(ResponseDto(isSuccess = false, serverMessage = "input Invalid or empty"))
+            }catch (e:Exception){
+                trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                Log.d("DEBUG_HOME_VIEW_MODEL", "updateReportLocation() : ${e.message.toString()}")
             }
+
             awaitClose{close()}
         }
     }
@@ -1464,7 +1508,7 @@ class HomeViewModel @Inject  constructor(
             ds.debugModeSave(isEnable)
         }
     }
-    fun changeScreenStatus(isEnable: Boolean? = null,time : Int? = null){
+    fun changeScreenStatus(isEnable: Boolean? = null,time : Float? = null){
         viewModelScope.launch(Dispatchers.IO) {
             ds.saveAppSetting(isEnable = isEnable,time = time)
         }
@@ -1508,114 +1552,114 @@ class HomeViewModel @Inject  constructor(
         }
         Log.d("TES-gRAAG","set false")
     }
-    suspend fun getMyReports() {
-
-        try {
-            auth.currentUser.let {
-
-                db.collection(DB_REF_REPORT).whereEqualTo("reportByUID", it?.uid).get().addOnSuccessListener { querySnapshot->
-                    val tempReports = ArrayList<SingleCustomReport>()
-                    querySnapshot.documents.forEach {ducument ->
-                        var likeCont = 0
-                        var disLikeCount = 0
-
-//                        val allFeedbacks = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Feedback").get().result.documents
-//                        val alertedCount = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Alerted").get().result.documents.size
-//                        allFeedbacks.forEach { feedback->
-//                            if (feedback.get("feedbackType") as Boolean){
-//                                likeCont +=1
-//                            }else{
-//                                disLikeCount +=1
-//                            }
+    fun getMyReports() {
+//        try {
+//            auth.currentUser.let {
+//                db.collection(DB_REF_REPORT).whereEqualTo("reportByUID", it?.uid).get().addOnSuccessListener { querySnapshot->
+//                    val tempReports = ArrayList<SingleCustomReport>()
+//                    querySnapshot.documents.forEach {ducument ->
+//                        val likeCont = 0
+//                        val disLikeCount = 0
+//
+////                        val allFeedbacks = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Feedback").get().result.documents
+////                        val alertedCount = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Alerted").get().result.documents.size
+////                        allFeedbacks.forEach { feedback->
+////                            if (feedback.get("feedbackType") as Boolean){
+////                                likeCont +=1
+////                            }else{
+////                                disLikeCount +=1
+////                            }
+////                        }
+//
+//                        val geoLocation = ducument.get("geoLocation") as List<*>?
+//                        if (geoLocation != null) {
+//                            val tempReportLocation = Location("")
+//                            val lat = geoLocation[0] as Double
+//                            val lng = geoLocation[1] as Double
+//
+//                            tempReportLocation.latitude = lat
+//                            tempReportLocation.longitude = lng
+//
+//                            tempReports.add(SingleCustomReport(
+//                                isSuccess = true,
+//                                reportLocation = tempReportLocation,
+//                                reportTime = incidentTime(ducument.data?.get("reportTimeStamp") as Timestamp,app),
+//                                reportAddress = ducument.data?.get("reportAddress") as String,
+//                                reportType = (ducument.data?.get("reportType") as Long).toInt(),
+//                                reportSpeedLimit = (ducument.data?.get("reportSpeedLimit") as Long?)?.toInt(),
+//                                alertedCount = 0,
+//
+//                                feedbackLikeCount = likeCont,
+//                                feedbackDisLikeCount = disLikeCount,
+//                                reportId = ducument.id
+//                                ))
+//
 //                        }
-
-                        val geoLocation = ducument.get("geoLocation") as List<*>?
-                        if (geoLocation != null) {
-                            var tempReportLocation = Location("")
-                            val lat = geoLocation[0] as Double
-                            val lng = geoLocation[1] as Double
-
-                            tempReportLocation.latitude = lat
-                            tempReportLocation.longitude = lng
-
-                            tempReports.add(SingleCustomReport(
-                                isSuccess = true,
-                                reportLocation = tempReportLocation,
-                                reportTime = incidentTime(ducument.data?.get("reportTimeStamp") as Timestamp,app),
-                                reportAddress = ducument.data?.get("reportAddress") as String,
-                                reportType = (ducument.data?.get("reportType") as Long).toInt(),
-                                reportSpeedLimit = (ducument.data?.get("reportSpeedLimit") as Long?)?.toInt(),
-                                alertedCount = 0,
-
-                                feedbackLikeCount = likeCont,
-                                feedbackDisLikeCount = disLikeCount,
-                                reportId = ducument.id
-                                ))
-
-                        }
-                    }.let {
-                        myReports.addAll(tempReports)
-                    }
-
-                }
-                db.collection(DB_REF_ARCHIVE_REPORT).whereEqualTo("reportByUID", it?.uid).get().addOnSuccessListener {querySnapshott->
-                    val tempReports = ArrayList<SingleCustomReport>()
-                    querySnapshott.documents.forEach {ducument ->
-
-                        var likeCont = 0
-                        var disLikeCount = 0
-
-//                        val allFeedbacks = db.collection(if(!isDebugMode.value!!){DB_REF_ARCHIVE_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Feedback").get().result.documents
-//                        val alertedCount = db.collection(if(!isDebugMode.value!!){DB_REF_ARCHIVE_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Alerted").get().result.documents.size
-//                        allFeedbacks.forEach { feedback->
-//                            if (feedback.get("feedbackType") as Boolean){
-//                                likeCont +=1
-//                            }else{
-//                                disLikeCount +=1
-//                            }
+//                    }.let {
+//                        myReports.addAll(tempReports)
+//                    }
+//
+//                }
+//                db.collection(DB_REF_ARCHIVE_REPORT).whereEqualTo("reportByUID", it?.uid).get().addOnSuccessListener {querySnapshott->
+//                    val tempReports = ArrayList<SingleCustomReport>()
+//                    querySnapshott.documents.forEach {ducument ->
+//
+//                        val likeCont = 0
+//                        val disLikeCount = 0
+//
+////                        val allFeedbacks = db.collection(if(!isDebugMode.value!!){DB_REF_ARCHIVE_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Feedback").get().result.documents
+////                        val alertedCount = db.collection(if(!isDebugMode.value!!){DB_REF_ARCHIVE_REPORT}else{ DB_REF_REPORT_DEBUG }).document(ducument.id).collection("Alerted").get().result.documents.size
+////                        allFeedbacks.forEach { feedback->
+////                            if (feedback.get("feedbackType") as Boolean){
+////                                likeCont +=1
+////                            }else{
+////                                disLikeCount +=1
+////                            }
+////                        }
+//
+//                        val geoLocation = ducument.get("geoLocation") as List<*>?
+//                        if (geoLocation != null) {
+//                            val tempReportLocation = Location("")
+//                            val lat = geoLocation[0] as Double
+//                            val lng = geoLocation[1] as Double
+//
+//                            tempReportLocation.latitude = lat
+//                            tempReportLocation.longitude = lng
+//
+//                            tempReports.add(SingleCustomReport(
+//                                isSuccess = true,
+//                                isActive = 0,
+//                                reportLocation = tempReportLocation,
+//                                reportTime = incidentTime(ducument.data?.get("reportTimeStamp") as Timestamp,app),
+//                                reportAddress = ducument.data?.get("reportAddress") as String,
+//                                reportType = (ducument.data?.get("reportType") as Long).toInt(),
+//                                reportSpeedLimit = (ducument.data?.get("reportSpeedLimit") as Long?)?.toInt(),
+//                                alertedCount = 0,
+//
+//                                feedbackLikeCount = likeCont,
+//                                feedbackDisLikeCount = disLikeCount,
+//                                reportId = ducument.id
+//                            ))
+//
 //                        }
-
-                        val geoLocation = ducument.get("geoLocation") as List<*>?
-                        if (geoLocation != null) {
-                            var tempReportLocation = Location("")
-                            val lat = geoLocation[0] as Double
-                            val lng = geoLocation[1] as Double
-
-                            tempReportLocation.latitude = lat
-                            tempReportLocation.longitude = lng
-
-                            tempReports.add(SingleCustomReport(
-                                isSuccess = true,
-                                isActive = 0,
-                                reportLocation = tempReportLocation,
-                                reportTime = incidentTime(ducument.data?.get("reportTimeStamp") as Timestamp,app),
-                                reportAddress = ducument.data?.get("reportAddress") as String,
-                                reportType = (ducument.data?.get("reportType") as Long).toInt(),
-                                reportSpeedLimit = (ducument.data?.get("reportSpeedLimit") as Long?)?.toInt(),
-                                alertedCount = 0,
-
-                                feedbackLikeCount = likeCont,
-                                feedbackDisLikeCount = disLikeCount,
-                                reportId = ducument.id
-                            ))
-
-                        }
-                    }.let {
-                        myReports.addAll(tempReports)
-                    }
-
-                }.let {
-                    myReports.sortBy { it -> it.isActive }
-                    //trySend(ResponseWithData(isSuccess = true, data = myReports, serverMessage = null))
-                }
-
-            }
-
-        } catch (e: Exception) {
-            //trySend(ResponseWithData(isSuccess = false, data = null, serverMessage = e.message))
-        }
+//                    }.let {
+//                        myReports.addAll(tempReports)
+//                    }
+//
+//                }.let {
+//                    myReports.sortBy { ito -> ito.isActive }
+//                    //trySend(ResponseWithData(isSuccess = true, data = myReports, serverMessage = null))
+//                }
+//
+//            }
+//
+//        } catch (e: Exception) {
+//            //trySend(ResponseWithData(isSuccess = false, data = null, serverMessage = e.message))
+//        }
 
     }
+
+
 //    private fun containsSpecialCharacters(str: String): Boolean {
 //        val pp = Pattern.compile("[^A-Za-z]")
 //        val mm = pp.matcher(str)
@@ -1643,8 +1687,8 @@ class HomeViewModel @Inject  constructor(
         val mines = (Timestamp.now().seconds - stamp.seconds)/60
         Log.d("DEBUG_TIME_INCIDENT",mines.toString())
         return try {
-            val sdf = SimpleDateFormat("MMMM dd, yyyy",Locale.US)
-            val netDate = Date((stamp.seconds * 1000))
+//            val sdf = SimpleDateFormat("MMMM dd, yyyy",Locale.US)
+//            val netDate = Date((stamp.seconds * 1000))
             if(mines > 60.0){
                 if ((mines/1440.0) > 1.0){
                     if ((mines/43200.0) >1.0){
@@ -1664,16 +1708,20 @@ class HomeViewModel @Inject  constructor(
         }
 
     }
-}
 
+    fun saveSpeedometerId(id: String) =
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreRepository.saveSpeedometerId(id)
+        }
+    fun saveCursorId(id: String) =
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreRepository.saveCursorId(id)
+        }
 
-suspend fun <T> Iterable<T>.forEachSuspendable(action: suspend (T) -> Unit) {
-    for (element in this) {
-        action(element)
+    fun isGuest(): Boolean {
+        return auth.currentUser == null
     }
 }
-
-
 //fun incidentTime(stamp : Timestamp,context: Context) : String{
 //    val mines = (Timestamp.now().seconds - stamp.seconds)/60
 //    Log.d("DEBUG_TIME_INCIDENT",mines.toString())
@@ -1699,15 +1747,15 @@ suspend fun <T> Iterable<T>.forEachSuspendable(action: suspend (T) -> Unit) {
 //    }
 //
 //}
-fun incidentDistance(distance : Float) : String{
-    val df = DecimalFormat("#.##")
-    df.roundingMode = RoundingMode.DOWN
-    return if (distance > 1000){
-        "${df.format(distance/1000)} KM"
-    }else{
-        "${df.format(distance)} M"
-    }
-}
+//fun incidentDistance(distance : Float) : String{
+//    val df = DecimalFormat("#.##")
+//    df.roundingMode = RoundingMode.DOWN
+//    return if (distance > 1000){
+//        "${df.format(distance/1000)} KM"
+//    }else{
+//        "${df.format(distance)} M"
+//    }
+//}
 
 
 data class UserDao(

@@ -1,5 +1,7 @@
 package com.orbital.cee.view
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
@@ -14,6 +16,7 @@ import com.orbital.cee.view.onBoarding.OnBoarding
 import com.orbital.cee.view.selectLanguage.Language
 import com.orbital.cee.view.splash.Splash
 
+@RequiresApi(Build.VERSION_CODES.S)
 @ExperimentalAnimationApi
 @Composable
 fun NavGraph(

@@ -202,16 +202,18 @@ fun VerifyOTP(
                                                         isLoading = false
                                                     }else{
                                                         viewModel.saveStatisticsFromFirestore()
-                                                        val navigate = Intent(context, HomeActivity::class.java)
-                                                        context.startActivity(navigate)
+                                                        navController.navigate("home")
+//                                                        val navigate = Intent(context, HomeActivity::class.java)
+//                                                        context.startActivity(navigate)
                                                         isLoading = false
                                                     }
 
                                                 }else{
                                                     viewModel.register(phone.value.toString(),cc.value.toString()).collect{
                                                         if(it.isSuccess){
-                                                            val navigate = Intent(context, HomeActivity::class.java)
-                                                            context.startActivity(navigate)
+                                                            navController.navigate("home")
+//                                                            val navigate = Intent(context, HomeActivity::class.java)
+//                                                            context.startActivity(navigate)
                                                             isLoading = false
                                                         }else{
                                                             showErrorDialog = true

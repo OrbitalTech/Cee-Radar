@@ -33,7 +33,7 @@ class DSRepositoryImpl @Inject constructor(@ApplicationContext private val conte
         val DEBUG_MODE_PREF_KEY = booleanPreferencesKey(Constants.DEBUG_MODE_PREF_KEY)
 
         val SCREEN_SLEEP_MODE_PREF_KEY = booleanPreferencesKey(Constants.SCREEN_SLEEP_MODE_PREF_KEY)
-        val SCREEN_SLEEP_TIMEOUT_PREF_KEY = intPreferencesKey(Constants.SCREEN_SLEEP_TIMEOUT_PREF_KEY)
+        val SCREEN_SLEEP_TIMEOUT_PREF_KEY = floatPreferencesKey(Constants.SCREEN_SLEEP_TIMEOUT_PREF_KEY)
     }
     override suspend fun saveStatistics(uStatistics : UserStatistics) {
         context.datastore.edit { data ->
@@ -57,7 +57,7 @@ class DSRepositoryImpl @Inject constructor(@ApplicationContext private val conte
         }
     }
 
-    override suspend fun saveAppSetting(isEnable: Boolean?,time : Int?) {
+    override suspend fun saveAppSetting(isEnable: Boolean?,time : Float?) {
         context.datastore.edit { data->
             if (isEnable != null){
                 data[SCREEN_SLEEP_MODE_PREF_KEY] = isEnable
@@ -71,7 +71,7 @@ class DSRepositoryImpl @Inject constructor(@ApplicationContext private val conte
     override suspend fun retrieveAppSetting()= context.datastore.data.map { log ->
         AppSetting(
             preventScreenSleep = log[SCREEN_SLEEP_MODE_PREF_KEY] ?: false,
-            screenSleepTimeOutInSecond = log[SCREEN_SLEEP_TIMEOUT_PREF_KEY] ?: 0
+            screenSleepTimeOutInSecond = log[SCREEN_SLEEP_TIMEOUT_PREF_KEY] ?: 0f
         )
     }
     override suspend fun retrieveDebugMode() = context.datastore.data.map { data->
@@ -88,4 +88,4 @@ class DSRepositoryImpl @Inject constructor(@ApplicationContext private val conte
 
 data class UserStatistics(val alertedCount:Int, val traveledDistance : Float,val maxSpeed : Int)
 data class UserActivityLog(val lastReportTime:Long, val reportCountInThisHour : Int)
-data class AppSetting(val preventScreenSleep:Boolean, val screenSleepTimeOutInSecond : Int)
+data class AppSetting(val preventScreenSleep:Boolean, val screenSleepTimeOutInSecond : Float)

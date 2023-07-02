@@ -2,6 +2,7 @@ package com.orbital.cee.view.trip.SpeedoMeters
 
 import android.util.Log
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -28,14 +29,14 @@ import kotlin.math.sin
 fun speedometerUnknown_1(value:Float){
     Canvas(modifier = Modifier.fillMaxSize()) {
         val radius= size.width * .5f
-        val angleDegreeDifference = (360f / 55f)
+        val angleDegreeDifference = 6.545
         (0..62).forEach {
-            val angleRadDifference = (((angleDegreeDifference * it) - 359f) * (Math.PI / 180f)).toFloat()
-            if (it >19){
+            val angleRadDifference = (((angleDegreeDifference * it) - 355f) * (Math.PI / 180f)).toFloat()
+            if (it >=19){
                 val x = (radius - ((radius * .05f) / 2) ) * cos(angleRadDifference) + size.center.x
                 val y = (radius - ((radius * .05f) / 2) ) * sin(angleRadDifference) + size.center.y
-
-                val col = Color(red = (234f- (it-19) * 4.025f).toInt(), green = (78f+((it-19) * 0.35f)).toInt(),blue = (52f+((it-19) * 4.5f)).toInt())
+                val i = it-19
+                val col = Color(red =(73+(i * 3.744)).toInt(), green = (92-(i * 0.325)).toInt(),blue = (232-(i * 4.186)).toInt())
 
                 drawCircle(
                     color = col,
@@ -92,5 +93,8 @@ fun speedometerUnknown_1(value:Float){
 @Preview
 fun speedometerUnknown_1Preview(){
     val aa = 0.22f
-    speedometerUnknown_1(aa)
+    Box(Modifier.size(300.dp)){
+        speedometerUnknown_1(aa)
+    }
+
 }

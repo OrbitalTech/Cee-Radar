@@ -2,6 +2,7 @@
 
 package com.orbital.cee.view.onBoarding
 
+import android.content.Intent
 import android.os.Build
 import androidx.annotation.FloatRange
 import androidx.annotation.RequiresApi
@@ -29,6 +30,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -48,6 +50,7 @@ import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
 import com.orbital.cee.R
 import com.orbital.cee.model.OnBoardingModel
+import com.orbital.cee.view.home.HomeActivity
 import com.orbital.cee.view.home.HomeViewModel
 import kotlinx.coroutines.launch
 
@@ -115,7 +118,7 @@ fun OnBoardingPager(
     model : HomeViewModel
 ) {
     val scope = rememberCoroutineScope()
-
+    val context = LocalContext.current
 
 
     Box(modifier = modifier) {
@@ -176,12 +179,14 @@ fun OnBoardingPager(
                 BottomSection(item.size,pagerState.currentPage+1, onSkipClicked = {
                     scope.launch {
                         model.saveFirstLaunch(false)
-                        navController.navigate("authentication")
+                        context.startActivity(Intent(context, HomeActivity::class.java))
+//                        navController.navigate("authentication")
                     }
                 }, onNextClicked = {
                     if(pagerState.currentPage+1 >= item.size){
                         model.saveFirstLaunch(false)
-                        navController.navigate("authentication")
+                        context.startActivity(Intent(context, HomeActivity::class.java))
+//                        navController.navigate("authentication")
                     }else{
                         scope.launch {
                             pagerState.animateScrollToPage(pagerState.currentPage + 1)

@@ -1,7 +1,8 @@
 package com.orbital.cee.view.trip
+
+
 import android.location.Location
 import android.os.Build
-import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
@@ -9,7 +10,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 
@@ -20,11 +21,8 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -32,12 +30,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.airbnb.lottie.compose.*
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
@@ -50,15 +46,16 @@ import com.orbital.cee.core.MyLocationService.LSS.TripAverageSpeed
 import com.orbital.cee.core.MyLocationService.LSS.TripDistance
 import com.orbital.cee.core.MyLocationService.LSS.TripMaxSpeed
 import com.orbital.cee.core.MyLocationService.LSS.speed
-import com.orbital.cee.model.NewReport
 import com.orbital.cee.model.Trip
+import com.orbital.cee.ui.theme.white
 import com.orbital.cee.utils.MetricsUtils.Companion.bearingToCoordinate
 import com.orbital.cee.utils.MetricsUtils.Companion.getRemainSeconds
+import com.orbital.cee.utils.MetricsUtils.Companion.getReportUiByReportType
+import com.orbital.cee.view.home.BottomSheets.incidentDistance
 import com.orbital.cee.view.home.HomeViewModel
+import com.orbital.cee.view.home.appMenu.componenets.advancedShadow
 import com.orbital.cee.view.home.components.startTripDialog
 import com.orbital.cee.view.trip.SpeedoMeters.*
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.util.*
@@ -68,19 +65,18 @@ import java.util.*
 fun Speed(
     model : HomeViewModel,
     onClickBack: ()-> Unit,
+    showBottomModalSheet: ()-> Unit,
     onClickContinue:()->Unit,
     onClickStart: ()-> Unit,
     onClickResetTrip : () -> Unit,
     onClickPause:() -> Unit,
     onClickFinish: ()-> Unit,
     isPurchasedAdRemove : MutableState<Boolean>){
-    val infiniteTransition = rememberInfiniteTransition()
+
     val timer by remember { mutableStateOf("00:00:00") }
-    var speedoMeterID by remember { mutableStateOf(1) }
-    val coroutineScope = rememberCoroutineScope()
     var showTripDialog by remember { mutableStateOf(false) }
-    var reportListIsEmpty by remember { mutableStateOf(false) }
     val trips = model.trips.observeAsState()
+    val speedometerId = model.speedometerId.observeAsState()
     val rotate = if (LocalConfiguration.current.layoutDirection == LayoutDirection.Rtl.ordinal){180f}else{0f}
     val context = LocalContext.current
     val composition by rememberLottieComposition(
@@ -94,48 +90,16 @@ fun Speed(
         speed = 1f,
         restartOnPlay = false
     )
-//    model.allReports.sortBy {
-//        val thisIncLocation = Location("")
-//        thisIncLocation.latitude = it.geoLocation?.get(0)!! as Double
-//        thisIncLocation.longitude = it.geoLocation?.get(1)!! as Double
-//        model.lastLocation.value.distanceTo(thisIncLocation)
-//    }
 
     var isShowTripHistory by remember { mutableStateOf(false) }
     val df = DecimalFormat("#.##")
     df.roundingMode = RoundingMode.DOWN
-//    LaunchedEffect(Unit){
-//        while (true){
-//            timer = getRemainSeconds(model.tripDurationInSeconds.value) //getDuration(MyLocationService.LSS.TripStartTime,Date())
-//            count++
-//            delay(1000)
-//        }
-//    }
 
-    Log.d("countDebug",model.tripDurationInSeconds.value.toString())
     val progressAnimationValue by animateFloatAsState(
         targetValue = ((speed.value.toFloat() / MAX_SPEED.toFloat()) * 0.8).toFloat(),
         animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing)
     )
-//    val progressAnimationValueTwo by animateFloatAsState(
-//        targetValue = model.speed.value.toFloat(),
-//        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing)
-//    )
     val conf = LocalConfiguration.current
-//    val heightUnit = (conf.screenHeightDp/100)
-//    val wUnit = (conf.screenWidthDp/8)
-//    val width = conf.screenWidthDp - (wUnit * 3)
-    val corR by infiniteTransition.animateFloat(
-        initialValue = 220f,
-        targetValue = 260f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 1500,
-                delayMillis = 100,
-                easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        )
-    )
     val color = remember { mutableStateOf(Color.White) }
     val icon = remember { mutableStateOf(R.drawable.cee) }
     val title = remember { mutableStateOf("") }
@@ -148,54 +112,8 @@ fun Speed(
 //            thisIncLocation.longitude = location[1] as Double
 //            model.lastLocation.value.distanceTo(thisIncLocation)
 //        }
-//
 //    }
-//    if ( model.allReports.firstOrNull() != null){
-//        when(model.allReports.first().reportType){
-//            1 ->{
-//                color.value = Color(0XFF495CE8)
-//                icon.value = R.drawable.ic_camera_fab
-//                title.value = stringResource(R.string.lbl_home_bottom_toast_inside_zone)
-//                title1.value = stringResource(R.string.lbl_trip_bottom_toast_inside_zone)
-//            }
-//            2->{
-//                color.value = Color(0XFFEA4E34)
-//                icon.value = R.drawable.ic_car_crash
-//                title.value = stringResource(R.string.lbl_trip_top_carcrash_tost_inside_zone)
-//                title1.value = stringResource(R.string.lbl_trip_bottom_carcrash_tost_inside_zone)
-//            }
-//            3->{
-//                color.value = Color(0XFF36B5FF)
-//                icon.value = R.drawable.ic_police
-//                title.value = stringResource(R.string.lbl_trip_top_police_tost_inside_zone)
-//                title1.value = stringResource(R.string.lbl_trip_bottom_police_tost_inside_zone)
-//            }
-//            4->{
-//                color.value = Color(0XFF1ED2AF)
-//                icon.value = R.drawable.ic_construction
-//                title.value = stringResource(R.string.lbl_trip_top_constraction_tost_inside_zone)
-//                title1.value = stringResource(R.string.lbl_trip_bottom_constraction_tost_inside_zone)
-//            }
-//            5 ->{
-//                color.value = Color(0XFF495CE8)
-//                icon.value = R.drawable.ic_static_camera
-//                title.value = stringResource(R.string.lbl_home_bottom_toast_inside_zone)
-//                title1.value = stringResource(R.string.lbl_trip_bottom_toast_inside_zone)
-//            }
-//            6 ->{
-//                color.value = Color(0XFF495CE8)
-//                icon.value = R.drawable.ic_point_to_point_camera
-//                title.value = stringResource(R.string.lbl_home_bottom_toast_inside_zone)
-//                title1.value = stringResource(R.string.lbl_trip_bottom_toast_inside_zone)
-//            }
-//        }
-//
-//    }else{
-//        reportListIsEmpty = true
-//    }
-
-
-
+//    val reportUI = getReportUiByReportType(reportType = model.allReports.firstOrNull()?.reportType ?: 1, context = context)
 
     Box(modifier = Modifier
         .fillMaxSize()
@@ -233,7 +151,7 @@ fun Speed(
             Column(modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .padding(start = 15.dp, end = 15.dp)
+                .padding(horizontal = 24.dp)
                 //.verticalScroll(rememberScrollState())
                 .background(color = MaterialTheme.colors.background)) {
 
@@ -247,193 +165,223 @@ fun Speed(
                             .size(22.dp)
                             .rotate(rotate), contentDescription = "" )
                     }
-                    Button(
-                        onClick = {
-//                            navController.popBackStack()
-                            isShowTripHistory = true
-                        },
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
-                        modifier = Modifier
-                            .size(46.dp)
-                            .advancedShadow(
-                                color = Color.Black,
-                                alpha = 0.03f,
-                                cornersRadius = 12.dp,
-                                shadowBlurRadius = 6.dp,
-                                offsetX = 0.dp,
-                                offsetY = 4.dp
-                            ), contentPadding = PaddingValues(0.dp),
-                        shape = RoundedCornerShape(15.dp)) {
+                    Box(modifier = Modifier
+                        .clickable(onClick = {
+                            if (model.isGuest()) {
+                                model.whichButtonClicked.value = 8
+                                showBottomModalSheet()
+                            } else {
+                                isShowTripHistory = true
+                            }
+                        }, interactionSource = remember {MutableInteractionSource() }, indication = null)
+                        .advancedShadow(
+                            color = Color.Black,
+                            alpha = 0.03f,
+                            cornersRadius = 10.dp,
+                            shadowBlurRadius = 6.dp,
+                            offsetX = 0.dp,
+                            offsetY = 3.dp
+                        ), contentAlignment = Alignment.Center) {
+                        Icon(modifier = Modifier
+                            .size(46.dp),painter = painterResource(id =R.drawable.bg_btn_place_cam_fab_main_scr ), contentDescription ="", tint = white )
                         Icon(painter = painterResource(id = R.drawable.ic_trip_history), tint = Color.Unspecified, contentDescription = "", modifier = Modifier.size(23.dp))
                     }
                 }
                 Column(modifier = Modifier
                     .fillMaxHeight(),verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.CenterHorizontally) {
-                    when (speedoMeterID) {
-                        2 -> {
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 10.dp)
-                                .pointerInput(Unit) {
-                                    detectTapGestures(onTap = {
-                                        speedoMeterID = 3
-                                    })
-                                }, contentAlignment = Alignment.Center){
-                                speedometerUnknown_3(progressAnimationValue)
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(text = df.format(speed.value), fontWeight = FontWeight.Bold, fontSize = 42.sp, color = Color(0XFF495CE8))
-                                    Text(text = "Km/h", color = Color(0XFF495CE8), fontSize = 25.sp)
-                                }
+                    Box{
+                        when (speedometerId.value) {
+                            "HITEX" -> {
+                                SpeedometerHITEX(
+                                    value = progressAnimationValue,
+                                    speed = speed.value,
+                                    bearing = model.lastLocation.value.bearing,
+                                    isNearReport = model.isNearReport.value,
+                                    reportType = model.nearReportType.value,
+                                    distance = model.distanceAway.value
+                                )
                             }
-                        }
-                        1 -> {
-                            Box(modifier =
-                            Modifier
-                                .size((conf.screenWidthDp - 80).dp)
-                                .border(
-                                    width = 0.dp,
-                                    color = Color(0x14FFFFFF),
-                                    shape = CircleShape
-                                )){
-                                    Box(
-                                        Modifier
-                                            .padding(18.dp)
-                                    ) {
-//                                        ceeOMeter(value = progressAnimationValue)
-//                                        speedometerHITEX(value = progressAnimationValue)
-                                        speedometerUnknown_1(progressAnimationValue)
-                                        SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull(),hitex = false)
-                                    }
-                            }
-                        }
-                        4 -> {
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 10.dp)
-                                .pointerInput(Unit) {
-                                    detectTapGestures(onTap = {
-                                        speedoMeterID = 1
-                                    })
-                                }, contentAlignment = Alignment.Center) {
-                                classicSpeedometer(progressAnimationValue)
-                                Column(modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
-//                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-//                                        Icon(painter = painterResource(id = R.drawable.ic_triangle), contentDescription = "", tint = Color.Unspecified, modifier = Modifier.rotate(180f))
-//                                        Text(bearingToCoordinate(model.lastLocation.value.bearing), fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
-//                                        Spacer(modifier = Modifier.height(10.dp))
-//                                        AnimatedVisibility(
-//                                            modifier = Modifier.fillMaxWidth(),
-//                                            visible = GeofenceBroadcastReceiver.GBRS.GeoId.value != null && !reportListIsEmpty,
-//                                            enter =  fadeIn(),
-//                                            exit = fadeOut()
-//                                        ) {
-//                                            Row(
-//                                                modifier = Modifier
-//                                                    .fillMaxWidth()
-//                                                    .height(35.dp),
-//                                                horizontalArrangement = Arrangement.Center,
-//                                                verticalAlignment = Alignment.CenterVertically
-//                                            ) {
-//                                                Box(
-//                                                    modifier = Modifier
-//                                                        .size(35.dp)
-//                                                        .clip(shape = RoundedCornerShape(12.dp))
-//                                                        .background(color = color1.value), contentAlignment = Alignment.Center
-//                                                ) {
-//                                                    Icon(painter = painterResource(id = icon.value), modifier = Modifier.size(18.dp), tint = color.value, contentDescription = "")
-//                                                }
-//                                                Spacer(modifier = Modifier.width(5.dp))
-//                                                Text(incidentDistance(nearestReportDistance), fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
-//
-//                                            }
-//                                        }
-//                                    }
-                                    Spacer(modifier = Modifier.height(70.dp))
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(df.format(speed.value), fontWeight = FontWeight.ExtraBold, fontSize = 35.sp,color = Color(0xFF495CE8))
-                                        Text("Km/h", fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
-                                    }
-
-                //
-                                }
-
-
-                            }
-                        }
-                        5 -> {
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 10.dp)
-                                .pointerInput(Unit) {
-                                    detectTapGestures(onTap = {
-                                        speedoMeterID = 4
-                                    })
-                                }, contentAlignment = Alignment.Center) {
-                                speedometerUnknown(progressAnimationValue)
-                                SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull())
-                            }
-                        }
-                        6 -> {
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 10.dp)
-                                .pointerInput(Unit) {
-                                    detectTapGestures(onTap = {
-                                        speedoMeterID = 5
-                                    })
-                                }, contentAlignment = Alignment.Center) {
-                                speedometerUnknown_2(progressAnimationValue)
-                                SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull())
-
-                            }
-                        }
-                        7 -> {
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 10.dp)
-//                                .pointerInput(Unit) {
-//                                    detectTapGestures(onTap = {
-//                                        speedoMeterID = 6
-//                                    })
-//                                }
-                                ,contentAlignment = Alignment.Center) {
-                                speedometerUnknown_1(progressAnimationValue)
-                                SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull())
-
-                            }
-                        }
-                        else -> {
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 15.dp)
-                                .pointerInput(Unit) {
-                                    detectTapGestures(onTap = {
-                                        speedoMeterID = 7
-                                    })
-                                }
-                                .height(260.dp), contentAlignment = Alignment.Center) {
-                                Box(modifier = Modifier
-                                    .size(corR.dp)
-                                    .clip(shape = RoundedCornerShape(300.dp))
-                                    .background(color = Color(0XFFECEEFD)),
-                                    contentAlignment = Alignment.Center) {
-                                }
-                                Box(modifier = Modifier
-                                    .clip(shape = RoundedCornerShape(300.dp))
-                                    .size(220.dp)
-                                    .background(color = Color(0XFF495CE8))) {
-                                    Column(modifier = Modifier
-                                        .fillMaxWidth()
-                                        .fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                                        Text(text = df.format(speed.value), fontSize = 42.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                        Text(text = "km/h",color = Color.White, fontSize = 25.sp)
-                                    }
-                                }
+                            "Analog" -> { classicSpeedometer(progressAnimationValue) }
+                            "ProPlus" -> { speedometerUnknown_1(progressAnimationValue) }
+                            else -> {
+                                CeeOMeter(
+                                    value = progressAnimationValue,
+                                    speed = speed.value,
+                                    bearing = model.lastLocation.value.bearing,
+                                    isNearReport = model.isNearReport.value,
+                                    reportType = model.nearReportType.value,
+                                    distance = model.distanceAway.value
+                                )
                             }
                         }
                     }
+
+
+//                    when (speedoMeterID) {
+//                        2 -> {
+//                            Box(modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(top = 10.dp)
+//                                .pointerInput(Unit) {
+//                                    detectTapGestures(onTap = {
+//                                        speedoMeterID = 3
+//                                    })
+//                                }, contentAlignment = Alignment.Center){
+//                                speedometerUnknown_3(progressAnimationValue)
+//                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                                    Text(text = df.format(speed.value), fontWeight = FontWeight.Bold, fontSize = 42.sp, color = Color(0XFF495CE8))
+//                                    Text(text = "Km/h", color = Color(0XFF495CE8), fontSize = 25.sp)
+//                                }
+//                            }
+//                        }
+//                        1 -> {
+//                            Box(modifier =
+//                            Modifier
+//                                .size((conf.screenWidthDp - 80).dp)
+//                                .border(
+//                                    width = 0.dp,
+//                                    color = Color(0x14FFFFFF),
+//                                    shape = CircleShape
+//                                )){
+//                                    Box(
+//                                        Modifier
+//                                            .padding(18.dp)
+//                                    ) {
+////                                        ceeOMeter(value = progressAnimationValue)
+////                                        speedometerHITEX(value = progressAnimationValue)
+//                                        speedometerUnknown_1(progressAnimationValue)
+//                                        SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull(),hitex = false)
+//                                    }
+//                            }
+//                        }
+//                        4 -> {
+//                            Box(modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(top = 10.dp)
+//                                .pointerInput(Unit) {
+//                                    detectTapGestures(onTap = {
+//                                        speedoMeterID = 1
+//                                    })
+//                                }, contentAlignment = Alignment.Center) {
+//                                classicSpeedometer(progressAnimationValue)
+//                                Column(modifier = Modifier
+//                                    .fillMaxWidth()
+//                                    .padding(top = 20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
+////                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+////                                        Icon(painter = painterResource(id = R.drawable.ic_triangle), contentDescription = "", tint = Color.Unspecified, modifier = Modifier.rotate(180f))
+////                                        Text(bearingToCoordinate(model.lastLocation.value.bearing), fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
+////                                        Spacer(modifier = Modifier.height(10.dp))
+////                                        AnimatedVisibility(
+////                                            modifier = Modifier.fillMaxWidth(),
+////                                            visible = GeofenceBroadcastReceiver.GBRS.GeoId.value != null && !reportListIsEmpty,
+////                                            enter =  fadeIn(),
+////                                            exit = fadeOut()
+////                                        ) {
+////                                            Row(
+////                                                modifier = Modifier
+////                                                    .fillMaxWidth()
+////                                                    .height(35.dp),
+////                                                horizontalArrangement = Arrangement.Center,
+////                                                verticalAlignment = Alignment.CenterVertically
+////                                            ) {
+////                                                Box(
+////                                                    modifier = Modifier
+////                                                        .size(35.dp)
+////                                                        .clip(shape = RoundedCornerShape(12.dp))
+////                                                        .background(color = color1.value), contentAlignment = Alignment.Center
+////                                                ) {
+////                                                    Icon(painter = painterResource(id = icon.value), modifier = Modifier.size(18.dp), tint = color.value, contentDescription = "")
+////                                                }
+////                                                Spacer(modifier = Modifier.width(5.dp))
+////                                                Text(incidentDistance(nearestReportDistance), fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
+////
+////                                            }
+////                                        }
+////                                    }
+//                                    Spacer(modifier = Modifier.height(70.dp))
+//                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                                        Text(df.format(speed.value), fontWeight = FontWeight.ExtraBold, fontSize = 35.sp,color = Color(0xFF495CE8))
+//                                        Text("Km/h", fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
+//                                    }
+//
+//                //
+//                                }
+//
+//
+//                            }
+//                        }
+//                        5 -> {
+//                            Box(modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(top = 10.dp)
+//                                .pointerInput(Unit) {
+//                                    detectTapGestures(onTap = {
+//                                        speedoMeterID = 4
+//                                    })
+//                                }, contentAlignment = Alignment.Center) {
+//                                speedometerUnknown(progressAnimationValue)
+//                                SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull())
+//                            }
+//                        }
+//                        6 -> {
+//                            Box(modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(top = 10.dp)
+//                                .pointerInput(Unit) {
+//                                    detectTapGestures(onTap = {
+//                                        speedoMeterID = 5
+//                                    })
+//                                }, contentAlignment = Alignment.Center) {
+//                                speedometerUnknown_2(progressAnimationValue)
+//                                SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull())
+//
+//                            }
+//                        }
+//                        7 -> {
+//                            Box(modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(top = 10.dp)
+////                                .pointerInput(Unit) {
+////                                    detectTapGestures(onTap = {
+////                                        speedoMeterID = 6
+////                                    })
+////                                }
+//                                ,contentAlignment = Alignment.Center) {
+//                                speedometerUnknown_1(progressAnimationValue)
+//                                SpeedDigit(currentLocation= model.lastLocation, speed = speed.value, nearestReport = model.allReports.firstOrNull())
+//
+//                            }
+//                        }
+//                        else -> {
+//                            Box(modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(top = 15.dp)
+//                                .pointerInput(Unit) {
+//                                    detectTapGestures(onTap = {
+//                                        speedoMeterID = 7
+//                                    })
+//                                }
+//                                .height(260.dp), contentAlignment = Alignment.Center) {
+//                                Box(modifier = Modifier
+//                                    .size(corR.dp)
+//                                    .clip(shape = RoundedCornerShape(300.dp))
+//                                    .background(color = Color(0XFFECEEFD)),
+//                                    contentAlignment = Alignment.Center) {
+//                                }
+//                                Box(modifier = Modifier
+//                                    .clip(shape = RoundedCornerShape(300.dp))
+//                                    .size(220.dp)
+//                                    .background(color = Color(0XFF495CE8))) {
+//                                    Column(modifier = Modifier
+//                                        .fillMaxWidth()
+//                                        .fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+//                                        Text(text = df.format(speed.value), fontSize = 42.sp, fontWeight = FontWeight.Bold, color = Color.White)
+//                                        Text(text = "km/h",color = Color.White, fontSize = 25.sp)
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
                     Column(modifier = Modifier
                         .fillMaxHeight()
                         .fillMaxWidth()
@@ -570,11 +518,17 @@ fun Speed(
                             .fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             if(!model.isTripStarted.value){
                                 Button(onClick = {
-                                    if (model.isTimerRunning.value){
-                                        showTripDialog = true
+                                    if (model.isGuest()){
+                                        model.whichButtonClicked.value = 8
+                                        showBottomModalSheet()
                                     }else{
-                                        onClickStart.invoke()
+                                        if (model.isTimerRunning.value){
+                                            showTripDialog = true
+                                        }else{
+                                            onClickStart()
+                                        }
                                     }
+
 
                                 }, modifier = Modifier
                                     .fillMaxWidth()
@@ -676,62 +630,14 @@ fun Speed(
 
 }
 @Composable
-fun SpeedDigit(speed:Int,nearestReport:NewReport?,currentLocation:MutableState<Location>,hitex:Boolean = false) {
-    val color = remember { mutableStateOf(Color.White) }
-    val color1 = remember { mutableStateOf(Color.White) }
-    val icon = remember { mutableStateOf(R.drawable.cee) }
-    val title = remember { mutableStateOf("") }
-    var reportListIsEmpty by remember { mutableStateOf(false) }
-    var nearestReportDistance by remember { mutableStateOf(0f) }
+fun SpeedDigit(speed:Int, nearestReportType:Int, currentLocation:MutableState<Location>, hitex:Boolean = false) {
+    val reportListIsEmpty by remember { mutableStateOf(false) }
+    val nearestReportDistance by remember { mutableStateOf(0f) }
     val df = DecimalFormat("#.##")
     df.roundingMode = RoundingMode.DOWN
-    if (nearestReport != null){
-        when(nearestReport.reportType){
-            1 ->{
-                color.value = Color(0XFF495CE8)
-                color1.value = Color(0x19495CE8)
-                icon.value = R.drawable.ic_camera_fab
-                title.value = stringResource(R.string.btn_home_report_action_sheet_roadCam)
-            }
-            2->{
-                color.value = Color(0XFFEA4E34)
-                color1.value = Color(0x19EA4E34)
-                icon.value = R.drawable.ic_car_crash
-                title.value = stringResource(R.string.btn_home_report_action_sheet_carCrash)
-            }
-            3->{
-                color.value = Color(0xFF36B5FF)
-                color1.value = Color(0x1936B5FF)
-                icon.value = R.drawable.ic_police
-                title.value = stringResource(R.string.btn_home_report_action_sheet_police)
-            }
-            4->{
-                color.value = Color(0XFF1ED2AF)
-                color1.value = Color(0x191ED2AF)
-                icon.value = R.drawable.ic_construction
-                title.value = stringResource(R.string.btn_home_report_action_sheet_construction)
-            }
-            5 ->{
-                color.value = Color(0XFF495CE8)
-                color1.value = Color(0x19495CE8)
-                icon.value = R.drawable.ic_static_camera
-                title.value = stringResource(R.string.btn_home_report_action_sheet_staticCam)
-            }
-            6 ->{
-                color.value = Color(0XFF495CE8)
-                color1.value = Color(0x19495CE8)
-                icon.value = R.drawable.ic_point_to_point_camera
-                title.value = stringResource(R.string.btn_home_report_action_sheet_p2pCam)
-            }
-        }
-        val thisIncLocation = Location("")
-        thisIncLocation.latitude = nearestReport.geoLocation?.get(0)!! as Double
-        thisIncLocation.longitude = nearestReport.geoLocation?.get(1)!! as Double
-        nearestReportDistance = currentLocation.value.distanceTo(thisIncLocation)
-        reportListIsEmpty = false
-    }else{
-        reportListIsEmpty = true
-    }
+    val context = LocalContext.current
+    val reportUI = getReportUiByReportType(nearestReportType,context)
+
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -756,9 +662,9 @@ fun SpeedDigit(speed:Int,nearestReport:NewReport?,currentLocation:MutableState<L
                         modifier = Modifier
                             .size(35.dp)
                             .clip(shape = RoundedCornerShape(12.dp))
-                            .background(color = color1.value), contentAlignment = Alignment.Center
+                            .background(color = reportUI.color1), contentAlignment = Alignment.Center
                     ) {
-                        Icon(painter = painterResource(id = icon.value), modifier = Modifier.size(18.dp), tint = color.value, contentDescription = "")
+                        Icon(painter = painterResource(id = reportUI.icon), modifier = Modifier.size(18.dp), tint = reportUI.color1, contentDescription = "")
                     }
                     Spacer(modifier = Modifier.width(5.dp))
                     Text(incidentDistance(nearestReportDistance), fontWeight = FontWeight.Bold, fontSize = 16.sp,color = Color(0xFF495CE8))
@@ -775,46 +681,14 @@ fun SpeedDigit(speed:Int,nearestReport:NewReport?,currentLocation:MutableState<L
 //        Text("40 km/h", fontWeight = FontWeight.Bold, fontSize = 14.sp,color = Color(0xFF495CE8))
     }
 }
-
-fun Modifier.advancedShadow(
-    color: Color = Color.Black,
-    alpha: Float = 1f,
-    cornersRadius: Dp = 0.dp,
-    shadowBlurRadius: Dp = 0.dp,
-    offsetY: Dp = 0.dp,
-    offsetX: Dp = 0.dp
-) = drawBehind {
-
-    val shadowColor = color.copy(alpha = alpha).toArgb()
-    val transparentColor = color.copy(alpha = 0f).toArgb()
-
-    drawIntoCanvas {
-        val paint = Paint()
-        val frameworkPaint = paint.asFrameworkPaint()
-        frameworkPaint.color = transparentColor
-        frameworkPaint.setShadowLayer(
-            shadowBlurRadius.toPx(),
-            offsetX.toPx(),
-            offsetY.toPx(),
-            shadowColor
-        )
-        it.drawRoundRect(
-            0f,
-            0f,
-            this.size.width,
-            this.size.height,
-            cornersRadius.toPx(),
-            cornersRadius.toPx(),
-            paint
-        )
-    }
-}
-fun incidentDistance(distance : Float) : String{
-    val df = DecimalFormat("#.##")
-    df.roundingMode = RoundingMode.DOWN
-    if (distance > 1000){
-        return "${df.format((distance/1000))} KM"
-    }else{
-        return "${df.format(distance)} M"
-    }
-}
+//
+//
+//fun incidentDistance(distance : Float) : String{
+//    val df = DecimalFormat("#.##")
+//    df.roundingMode = RoundingMode.DOWN
+//    return if (distance > 1000){
+//        "${df.format((distance/1000))} KM"
+//    }else{
+//        "${df.format(distance)} M"
+//    }
+//}

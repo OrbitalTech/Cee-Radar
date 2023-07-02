@@ -6,8 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -19,8 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,7 +51,7 @@ fun InsideReportToast(reportType:Int,speedLimit: Int?,onClose:()->Unit){
         4->{
             color.value = Color(0XFF1ED2AF)
             color1.value = Color(0XFFAAAAAA)
-            icon.value = R.drawable.ic_construction
+            icon.value = R.drawable.ic_new_construction
             title.value = stringResource(R.string.btn_home_report_action_sheet_construction)
         }
         5 ->{

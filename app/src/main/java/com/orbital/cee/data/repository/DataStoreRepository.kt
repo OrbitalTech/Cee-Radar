@@ -9,6 +9,7 @@ import com.google.firebase.Timestamp
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.orbital.cee.core.AppSettingsSerializer
+import com.orbital.cee.core.Constants.CURSORID
 import com.orbital.cee.core.Constants.GEOFENCE_RADIUS_M
 import com.orbital.cee.core.Constants.LANGUAGE_CODE
 import com.orbital.cee.core.Constants.PREFERENCE_ADS_WATCH_TIME
@@ -23,6 +24,7 @@ import com.orbital.cee.core.Constants.PREFERENCE_TRIP_HISTORY
 import com.orbital.cee.core.Constants.PREFERENCE_USER_TYPE
 import com.orbital.cee.core.Constants.REPORT_COUNTER_PER_ONE_HOUR
 import com.orbital.cee.core.Constants.SAVE_LAST_REPORT
+import com.orbital.cee.core.Constants.SPEEDOMETERID
 import com.orbital.cee.model.Trip
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ViewModelScoped
@@ -48,6 +50,8 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
         val saveUserType = intPreferencesKey(PREFERENCE_USER_TYPE)
         val lastAdsWatch = longPreferencesKey(PREFERENCE_ADS_WATCH_TIME)
         val languageCode = stringPreferencesKey(LANGUAGE_CODE)
+        val speedometerId = stringPreferencesKey(SPEEDOMETERID)
+        val cursorId = stringPreferencesKey(CURSORID)
         val geofenceRadius = intPreferencesKey(GEOFENCE_RADIUS_M)
         val reportCounterPerOneHour = intPreferencesKey(REPORT_COUNTER_PER_ONE_HOUR)
         val saveLastReport = longPreferencesKey(SAVE_LAST_REPORT)
@@ -103,6 +107,16 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
     suspend fun saveLanguageCode(langCode:String) {
         dataStore.edit { preference ->
             preference[PreferenceKey.languageCode] = langCode
+        }
+    }
+    suspend fun saveSpeedometerId(id:String) {
+        dataStore.edit { preference ->
+            preference[PreferenceKey.speedometerId] = id
+        }
+    }
+    suspend fun saveCursorId(id:String) {
+        dataStore.edit { preference ->
+            preference[PreferenceKey.cursorId] = id
         }
     }
     suspend fun addAlertCount(alertCount : Int) {
@@ -235,6 +249,32 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
             val firstLaunch = preference[PreferenceKey.languageCode] ?: "en"
             firstLaunch
         }
+
+    val speedometerId: Flow<String> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preference ->
+            val firstLaunch = preference[PreferenceKey.speedometerId] ?: "Original"
+            firstLaunch
+        }
+    val cursorId: Flow<String> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preference ->
+            val firstLaunch = preference[PreferenceKey.cursorId] ?: "Original"
+            firstLaunch
+        }
+
     val readSoundStatus: Flow<Int> = dataStore.data
         .catch { exception ->
             if (exception is IOException) {

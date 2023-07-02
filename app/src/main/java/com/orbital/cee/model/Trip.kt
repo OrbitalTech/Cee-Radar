@@ -1,11 +1,5 @@
 package com.orbital.cee.model
 
-import android.location.Location
-import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.Color
-import com.google.android.gms.maps.model.LatLng
-import com.google.firebase.Timestamp
-import com.google.firebase.firestore.GeoPoint
 import com.mapbox.geojson.Point
 import java.util.*
 import kotlin.collections.ArrayList

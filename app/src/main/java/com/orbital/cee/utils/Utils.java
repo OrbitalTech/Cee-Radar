@@ -20,6 +20,7 @@ import androidx.lifecycle.ViewModel;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 
+import java.io.File;
 import java.lang.reflect.Field;
 import java.util.UUID;
 
@@ -178,7 +179,17 @@ public class Utils {
         }
 
     }
+    public static File changeExtension(File file, String extension) {
+        String filename = file.getName();
 
+        if (filename.contains(".")) {
+            filename = filename.substring(0, filename.lastIndexOf('.'));
+        }
+        filename += "." + extension;
+
+        file.renameTo(new File(file.getParentFile(), filename));
+        return file;
+    }
     public static int getNavigatingBarHeight(Context context){
         Resources resources = context.getResources();
         int resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android");

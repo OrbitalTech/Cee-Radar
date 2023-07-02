@@ -81,10 +81,17 @@ fun DynamicModalView(
                     Column(Modifier.fillMaxWidth(0.75f),horizontalAlignment = Alignment.CenterHorizontally) {
                         Spacer(modifier = Modifier.height(height = if (description == null) { 10.dp } else { 0.dp }))
                         Text(text = title, textAlign = TextAlign.Center, fontWeight = FontWeight.W700, fontSize = 20.sp)
-                        if (description != null){
+                        description?.let {
                             Text(modifier = Modifier
                                 .padding(top = 15.dp, bottom = 10.dp)
-                                .verticalScroll(scroll),text = description, lineHeight = 16.2.sp, color = Color(0xFF848484), fontWeight = FontWeight.W500,textAlign = TextAlign.Center, fontSize = 14.sp)
+                                .verticalScroll(scroll),
+                                text = description,
+//                                lineHeight = 16.2.sp,
+                                color = Color(0xFF848484),
+                                fontWeight = FontWeight.W500,
+                                textAlign = TextAlign.Center,
+                                fontSize = 14.sp
+                            )
                         }
                      }
                     if (negativeButtonText != null){

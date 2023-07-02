@@ -1,11 +1,14 @@
 package com.orbital.cee.view.splash
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.CountDownTimer
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -42,12 +45,14 @@ import java.util.*
 import kotlin.collections.HashMap
 import kotlin.system.exitProcess
 
+@RequiresApi(Build.VERSION_CODES.S)
 @Composable
  fun Splash(
     navController : NavController,
     model : HomeViewModel = viewModel()
 ) {
-    var context = LocalContext.current
+    val context = LocalContext.current
+    val activity = context as Activity
     val configuration = LocalConfiguration.current
     var remoteConfig : FirebaseRemoteConfig? = null
     val resources = LocalContext.current.resources
@@ -102,7 +107,7 @@ import kotlin.system.exitProcess
 //            Icon(painter = painterResource(id = R.drawable.ic_txt_cee), contentDescription ="", tint = Color.White )
         }
     }
-    val a = model.readFirstLaunch.observeAsState()
+    val firstLaunch = model.readFirstLaunch.observeAsState()
     val langCode = model.langCode.observeAsState()
 
     var locale = Locale("en")
@@ -138,15 +143,21 @@ import kotlin.system.exitProcess
         delay(1000)
         if(googlePlayServiceEnabled(context)){
             if (Utils.buildNumber(context) >= min ){
-                if (a.value != null && a.value == true) {
+                if (firstLaunch.value != null && firstLaunch.value == true) {
                     navController.navigate(Screen.Language.route)
                 } else {
-                    if (model.isLogin()){
-                        val navigate = Intent(context, HomeActivity::class.java)
-                        context.startActivity(navigate)
-                    }else{
-                        navController.navigate(Screen.Authentication.route)
-                    }
+                    val appLinkIntent: Intent = activity.intent
+                    val intent = Intent(context, HomeActivity::class.java)
+                    intent.action = appLinkIntent.action
+                    intent.data = appLinkIntent.data
+                    Log.d("MAIN_ACTIVITY_PREV",appLinkIntent.data.toString())
+                    context.startActivity(intent)
+//                    if (model.isLogin()){
+//                        val navigate = Intent(context, HomeActivity::class.java)
+//                        context.startActivity(navigate)
+//                    }else{
+//                        navController.navigate(Screen.Authentication.route)
+//                    }
                 }
             }else{
                 val builder = AlertDialog.Builder(context)
