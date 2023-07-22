@@ -24,12 +24,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.orbital.cee.R
 import com.orbital.cee.view.authentication.component.DisplayResponseMessage
 import com.orbital.cee.view.home.HomeActivity
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 @Composable
@@ -66,7 +64,7 @@ fun SignUp (navController: NavController,
                             .fillMaxWidth()
                             .padding(20.dp),
                         horizontalArrangement = Arrangement.Start) {
-                        Icon(painter = painterResource(id =R.drawable.ic_arrow_back),
+                        Icon(painter = painterResource(id =R.drawable.ic_arrow_left),
                             modifier = Modifier.size(18.dp).clickable {navController.popBackStack()},
                             contentDescription = "",
                             tint = Color(0xFFA7A7A7)
@@ -108,7 +106,7 @@ fun SignUp (navController: NavController,
                                         val navigate = Intent(context, HomeActivity::class.java)
                                         context.startActivity(navigate)
                                     }else{
-                                        Toast.makeText(context, it.serverMessage, Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
                                     }
                                 }
                                 //updateScreen(viewModel,navController,context)

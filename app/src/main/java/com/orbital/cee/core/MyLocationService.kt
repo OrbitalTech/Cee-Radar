@@ -190,7 +190,6 @@ class MyLocationService: Service() {
         fun isThisReportMuted(reportId:String): Boolean{
             return allMutedReports.contains(reportId)
         }
-
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -243,6 +242,7 @@ class MyLocationService: Service() {
 
     var prevLocation = Location("")
     private var lLocation = Location("")
+    var oldId = ""
     var counter = 0
     var counter1 = 0
     var i = 0
@@ -260,7 +260,8 @@ class MyLocationService: Service() {
             .getLocationUpdates(500L)
             .catch { e -> e.printStackTrace() }
             .onEach { it ->
-                Log.d("DEBUG_LAT_LON_SERV","${it.longitude},${it.latitude}")
+//                Log.d("DEBUG_LAT_LON_SERV","${it.longitude},${it.latitude}")
+
                 lrouteCoordinates.add(Point.fromLngLat(it.longitude,it.latitude))
                 prevLocation = if (prevLocation == Location("")){ it }else{
                     val dis = prevLocation.distanceTo(it)
@@ -277,11 +278,26 @@ class MyLocationService: Service() {
                 isChangeDetected.value = true
 
                 GeofenceBroadcastReceiver.GBRS.GeoId.value?.let {rId->
+                    Log.d("DEBUG_IS_REPORT_MUTE",LSR.isThisReportMuted(reportId = rId).toString())
                     val report = findReport(rId)
                     report?.let {repo->
                         var reportDirection = "-1"
-                        repo.reportDirection?.let {
-                            reportDirection = it.toString()
+                        val reportLocation = Location("")
+
+                        if (rId != oldId ){
+                            oldId = rId
+                            repo.reportDirection?.let {
+                                reportDirection = it.toString()
+                            }
+                            repo.geoLocation?.let {
+                                reportLocation.latitude = it[0] as Double
+                                reportLocation.longitude = it[1] as Double
+                            }
+                        }
+                        if (reportLocation != Location("")){
+                            if (reportLocation.distanceTo(it) < 5){
+                                GeofenceBroadcastReceiver.GBRS.add(null)
+                            }
                         }
                         val reportType = repo.reportType
                         if(reportDirection != ""){
@@ -299,6 +315,8 @@ class MyLocationService: Service() {
                                                     mMediaPlayer.setOnCompletionListener {
                                                         audio.setStreamVolume(AudioManager.STREAM_MUSIC,stVolLev,0)
                                                     }
+                                                }else{
+                                                    Log.d("DEBUG_IS_REPORT_MUTE","YES")
                                                 }
                                             }
                                         }else if (HomeActivity.Singlt.SoundSta.value == 2){
@@ -329,6 +347,8 @@ class MyLocationService: Service() {
                                                 mMediaPlayer.setOnCompletionListener {
                                                     audio.setStreamVolume(AudioManager.STREAM_MUSIC,stVolLev,0)
                                                 }
+                                            } else{
+                                                Log.d("DEBUG_IS_REPORT_MUTE",LSR.isThisReportMuted(reportId = rId).toString())
                                             }
                                         }
                                     }else if (HomeActivity.Singlt.SoundSta.value == 2){
@@ -411,7 +431,7 @@ class MyLocationService: Service() {
             report = if (localReport != null){
                 getReportDataById(rId)
             }else{
-                db.collection("ReportsDebug").document(rId).get().await().toObject(NewReport::class.java)
+                db.collection("Reports").document(rId).get().await().toObject(NewReport::class.java)
             }
             prevId = rId
             report

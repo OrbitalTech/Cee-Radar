@@ -46,7 +46,7 @@ class FbAuthActivity : FragmentActivity() {
         FacebookSdk.fullyInitialize()
         AppEventsLogger.activateApp(application)
         setContent {
-            CEETheme(langCode=langCode.value) {
+            CEETheme(langCode= { langCode.value }) {
                 CompositionLocalProvider(
                     LocalFacebookCallbackManager provides callbackManager
                 ) {
@@ -70,7 +70,9 @@ fun LoginScreen() {
     val context = LocalContext.current
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
-    Box(modifier = Modifier.fillMaxSize().background(color = Color(0xFF495CE8))) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(color = Color(0xFF495CE8))) {
         if (showErrorDialog) {
             ShowErrorDialog(
                 onOkayClick = {

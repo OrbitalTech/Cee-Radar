@@ -67,7 +67,7 @@ fun MyFab (userType: MutableLiveData<UserTiers>, isPointClicked:MutableState<Boo
                 colors = ButtonDefaults.buttonColors(backgroundColor = Color.White)
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_add),
+                    painter = painterResource(id = R.drawable.ic_plus),
                     modifier = Modifier.size(35.dp),
                     contentDescription = "",
                     tint =Color.Gray

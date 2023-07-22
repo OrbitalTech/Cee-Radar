@@ -71,7 +71,7 @@ fun sound(model: HomeViewModel, onClickBack:()->Unit) {
                     TextButton(onClick = onClickBack, modifier = Modifier.padding(end = 12.dp)) {
                         Icon(modifier = Modifier
                             .size(22.dp)
-                            .rotate(rotate), tint = Color.Black , painter = painterResource(id = R.drawable.ic_arrow_back), contentDescription ="" )
+                            .rotate(rotate), tint = Color.Black , painter = painterResource(id = R.drawable.ic_arrow_left), contentDescription ="" )
                     }
                 }
             }

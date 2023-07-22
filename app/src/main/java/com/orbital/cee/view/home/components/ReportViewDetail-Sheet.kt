@@ -87,13 +87,13 @@ fun ReportViewDetail(model: HomeViewModel = viewModel(),reportId : String = "",o
         2->{
             color.value = Color(0XFFEA4E34)
             color1.value = Color(0XFFAAAAAA)
-            icon.value = R.drawable.ic_car_crash
+            icon.value = R.drawable.ic_carcrash
             title.value = stringResource(R.string.btn_home_report_action_sheet_carCrash)
         }
         3->{
             color.value = Color(0XFF57D654)
             color1.value = Color(0XFFAAAAAA)
-            icon.value = R.drawable.ic_police
+            icon.value = R.drawable.ic_new_police
             title.value = stringResource(R.string.btn_home_report_action_sheet_police)
         }
         4->{

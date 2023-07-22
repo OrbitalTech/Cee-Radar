@@ -39,13 +39,13 @@ fun InsideReportToast(reportType:Int,speedLimit: Int?,onClose:()->Unit){
         2->{
             color.value = Color(0XFFF27D28)
             color1.value = Color(0XFFAAAAAA)
-            icon.value = R.drawable.ic_car_crash
+            icon.value = R.drawable.ic_carcrash
             title.value = stringResource(R.string.btn_home_report_action_sheet_carCrash)
         }
         3->{
             color.value = Color(0XFF36B5FF)
             color1.value = Color(0XFFAAAAAA)
-            icon.value = R.drawable.ic_police
+            icon.value = R.drawable.ic_new_police
             title.value = stringResource(R.string.btn_home_report_action_sheet_police)
         }
         4->{

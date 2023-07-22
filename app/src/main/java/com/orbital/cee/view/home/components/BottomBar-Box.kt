@@ -243,7 +243,7 @@ fun bottomBar(model:HomeViewModel,
                     ) {
                         Icon(
                             tint = Color(0xFF495CE8),
-                            painter = painterResource(id = R.drawable.ic_add),
+                            painter = painterResource(id = R.drawable.ic_plus),
                             contentDescription = "",
                             modifier = Modifier.size(40.dp)
                         )

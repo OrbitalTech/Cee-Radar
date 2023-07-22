@@ -19,7 +19,6 @@ import com.orbital.cee.core.Constants.DB_REF_USER
 import com.orbital.cee.data.Event
 import com.orbital.cee.data.repository.DSRepositoryImpl
 import com.orbital.cee.data.repository.DataStoreRepository
-import com.orbital.cee.data.repository.EligibilityUserException
 import com.orbital.cee.data.repository.UserStatistics
 import com.orbital.cee.model.Response
 import com.orbital.cee.model.Response.Success
@@ -116,11 +115,11 @@ class AuthenticationViewModel @Inject constructor(
                          PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
                          override fun onVerificationCompleted(p0: PhoneAuthCredential) {
                              //handleException(customMessage = "Verification Completed")
-                             trySend(ResponseDto(isSuccess = true,serverMessage = "Verification Completed"))
+                             trySend(ResponseDto(isSuccess = true,message = "Verification Completed"))
                          }
                          override fun onVerificationFailed(p0: FirebaseException) {
                              Log.d("ERROR-A01",p0.message.toString())
-                             trySend(ResponseDto(isSuccess = false,serverMessage = "${p0.message}"))
+                             trySend(ResponseDto(isSuccess = false,message = "${p0.message}"))
                          }
                          override fun onCodeSent(
                              otp: String,
@@ -134,12 +133,12 @@ class AuthenticationViewModel @Inject constructor(
                              saveUserCredential(firstLaunch = otp, phone = mobileNum, cc = countryCode.substring(1))
 
                              //handleException(customMessage = "Otp Send Successfully")
-                             trySend(ResponseDto(isSuccess = true,serverMessage = "one time password sent to $mobileNum Successfully."))
+                             trySend(ResponseDto(isSuccess = true,message = "one time password sent to $mobileNum Successfully."))
                          }
                      }).build()
                  PhoneAuthProvider.verifyPhoneNumber(options)
              }else{
-                 trySend(ResponseDto(isSuccess = false,serverMessage = "Sorry an error occurred."))
+                 trySend(ResponseDto(isSuccess = false,message = "Sorry an error occurred."))
              }
              awaitClose { close() }
          }
@@ -158,13 +157,13 @@ class AuthenticationViewModel @Inject constructor(
                 auth.signInWithCredential(credential)
                     .addOnCompleteListener{ task ->
                         if (task.isSuccessful) {
-                            trySend(ResponseDto(isSuccess = true, serverMessage = "Login successfully."))
+                            trySend(ResponseDto(isSuccess = true, message = "Login successfully."))
                         } else {
-                            trySend(ResponseDto(isSuccess = false, serverMessage = "${task.exception!!.message}"))
+                            trySend(ResponseDto(isSuccess = false, message = "${task.exception!!.message}"))
                         }
                     }
             } catch (e:Exception){
-                trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                trySend(ResponseDto(isSuccess = false, message = "${e.message}"))
             }
 
             awaitClose{close()}
@@ -213,17 +212,17 @@ class AuthenticationViewModel @Inject constructor(
                     if (!it){
                         document.set(user)
                             .addOnSuccessListener {
-                                trySend(ResponseDto(isSuccess = true, serverMessage = "Successfully registered."))
+                                trySend(ResponseDto(isSuccess = true, message = "Successfully registered."))
                             }
                             .addOnFailureListener { it ->
-                                trySend(ResponseDto(isSuccess = false, serverMessage = "Sorry, an error occurred:${it.message}"))
+                                trySend(ResponseDto(isSuccess = false, message = "Sorry, an error occurred:${it.message}"))
                             }
                     }else{
-                        trySend(ResponseDto(isSuccess = false, serverMessage = "This phone number already used."))
+                        trySend(ResponseDto(isSuccess = false, message = "This phone number already used."))
                     }
                 }
             } catch (e: Exception) {
-            trySend(ResponseDto(isSuccess = false, serverMessage = "Sorry, an error occurred:${e.message}"))
+            trySend(ResponseDto(isSuccess = false, message = "Sorry, an error occurred:${e.message}"))
             }
             awaitClose{ close()}
         }

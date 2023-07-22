@@ -17,6 +17,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -30,11 +31,15 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,6 +77,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -80,6 +86,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -102,13 +109,8 @@ import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.interstitial.InterstitialAd
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
-import com.google.android.gms.ads.rewarded.RewardedAd
-import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
@@ -161,12 +163,12 @@ import com.orbital.cee.model.UserTiers
 import com.orbital.cee.ui.theme.black
 import com.orbital.cee.ui.theme.white
 import com.orbital.cee.utils.MetricsUtils
+import com.orbital.cee.utils.MetricsUtils.Companion.getReportTypeByReportTypeAndSpeedLimit
 import com.orbital.cee.utils.Utils.dpToPx
 import com.orbital.cee.view.LocationNotAvailable.LocationNotAvailable
 import com.orbital.cee.view.home.BottomSheets.AddReportManuallyModal
 import com.orbital.cee.view.home.BottomSheets.LoginRequired
 import com.orbital.cee.view.home.HomeViewModel
-import com.orbital.cee.view.home.SaveUserInfoInAlerted
 import com.orbital.cee.view.home.UserInformation
 import com.orbital.cee.view.home.components.DynamicModal
 import com.orbital.cee.view.home.components.FeedbackToast
@@ -201,7 +203,6 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
 
-
 @Suppress("DeferredResultUnused")
 @SuppressLint("MissingPermission")
 @RequiresApi(Build.VERSION_CODES.S)
@@ -211,12 +212,10 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
 
     val layerIDD = "map_annotation"
     val layerPinIDD = "map_pin"
-    var reportId = ""
+    val reportId = ""
     var speedLimit :String? = ""
     var reportIdEditing = ""
     var oldId = ""
-    var mRewardedAd : RewardedAd ? = null
-    var mInterstitialAd: InterstitialAd? = null
 
     val showRegisterDialog = remember { mutableStateOf(false) }
     val isShowMenu = remember { mutableStateOf(false) }
@@ -230,11 +229,13 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
     val alarm = remember { mutableStateOf(false) }
     val isRemove = remember { mutableStateOf(false) }
     val isShowReport = remember { mutableStateOf(false) }
-    val isRewardedVideoReady = remember { mutableStateOf(false) }
+
     val isShowReportFromDeepLink = remember { mutableStateOf(false) }
     val reportType = remember { mutableStateOf(1) }
     val alertCount = remember { mutableStateOf(0) }
     val bottomSheetContentId = remember { mutableStateOf(0) }
+    val annotationReportType = remember { mutableStateOf<Int?>(null) }
+    val annotationReportSpeedLimit = remember { mutableStateOf<Int?>(null) }
 
 
     val timeRemainInt = remember { mutableStateOf(0f) }
@@ -263,7 +264,7 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
     })
     val traveledDistance = model.readDistance.observeAsState()
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = bottomSheetState)
-    val infiniteTransition = rememberInfiniteTransition()
+    val infiniteTransition = rememberInfiniteTransition(label = "")
     val configuration = LocalConfiguration.current
     val composition by rememberLottieComposition(
         LottieCompositionSpec
@@ -301,97 +302,7 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
             true
         }
     )
-    val appLinkIntent: Intent = activity.intent
-     appLinkIntent.action
-    LaunchedEffect(appLinkIntent.data != null){
-        appLinkIntent.data?.let {data->
-            data.pathSegments[0]?.let {actionType->
-                Log.d("MAIN_ACTIVITY_PREV", "1:  $actionType")
-                model.onCameraTrackingDismissed()
-                if (actionType == "report"){
-                    data.pathSegments[1]?.let { id->
-                        if(id != oldId){
-                            oldId = id
-                            Log.d("MAIN_ACTIVITY_PREV", "2:  $id")
-                            model.getSingleReportForSharedLink(id)?.let{
-                                delay(4000)
-                                model.allReports.add(it)
-                                model.reportId.value = id
-                                model.whichButtonClicked.value = 4
-                                it.geoLocation?.let {loco->
-                                    isShowReport.value = true
-                                    val screenHe = Resources.getSystem().displayMetrics.heightPixels
-                                    if (loco != Location("")){
-                                        model.onCameraTrackingDismissed()
-                                        model.mapView.getMapboxMap().flyTo(cameraOptions {
-                                            center(Point.fromLngLat(loco[1] as Double,loco[0] as Double))
-                                            zoom(15.5)
-                                            pitch(10.0)
-                                            padding(EdgeInsets(0.0,0.0, screenHe/3.3,0.0))
-                                        },MapAnimationOptions.mapAnimationOptions { duration(1500)}
-                                        )
-                                    }
-                                }
-                                isShowReportFromDeepLink.value = true
-//                                modalSheetState.show()
-//                                coroutineScope.launch {
-//
-//                                }
 
-                            }
-
-                        }
-
-                    }
-                }else {
-                    data.pathSegments[1]?.let{uid->
-                        data.pathSegments[2]?.let {tripId->
-                            val islandRef = storageRef.child("SharedTrips/$uid/$tripId")
-                            val localFile = File.createTempFile("temp_trip", "trip")
-                            try{
-                                coroutineScope.launch {
-                                    islandRef.getFile(localFile).await()
-                                    val jsonString = localFile.readText()
-                                    val trip : Trip = Gson().fromJson(jsonString,Trip::class.java)
-                                    model.saveTrip(trip)
-                                }
-
-                            }catch(e :IOException){
-                                Log.d("MAIN_ACTIVITY_PREV", "10:  ${e.message}")
-                            }
-                        }
-                    }
-//                if(actionType == "trip"){
-//
-//                }
-                }
-            }
-        }
-    }
-
-
-
-
-
-    val nearestReport = model.allReports.firstOrNull()
-    nearestReport?.let {report->
-        if (report.reportType == 1 || report.reportType == 2 || report.reportType == 3 || report.reportType == 5 || report.reportType == 6){
-            val reportLocation = Location("")
-            reportLocation.latitude = report.geoLocation?.get(0) as Double
-            reportLocation.longitude = report.geoLocation?.get(1) as Double
-            Log.d("DEBUG_NEAREST_REPORT_DIS","hey")
-            if (model.lastLocation.value.distanceTo(reportLocation) < 1000){
-                model.isNearReport.value = true
-                model.distanceAway.value = (model.lastLocation.value.distanceTo(reportLocation) *100.0).roundToInt() / 100.0
-                model.nearReportType.value = report.reportType
-            }else{
-                model.isNearReport.value = false
-                model.distanceAway.value = 0.0
-            }
-        }
-
-
-    }
 
     val lastWatchedAd = model.lsatAdsWatched.observeAsState()
 
@@ -449,23 +360,27 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
                                 model.reportClicked.value = true
                                 val reportArray = annotation.getData()?.asJsonObject
                                 val repo = reportArray?.get("report")
+                                annotationReportType.value = reportArray?.get("type")?.asInt
+                                annotationReportSpeedLimit.value = reportArray?.get("speed-limit")?.asInt
                                 val lat = reportArray?.get("lat")?.asDouble
                                 val lon = reportArray?.get("lon")?.asDouble
-                                model.reportId.value = "${repo?.asString}"
-                                model.whichButtonClicked.value = 4
-                                isShowReport.value = true
-                                val screenHe = Resources.getSystem().displayMetrics.heightPixels
-                                if (lat != null && lon != null){
-                                    model.onCameraTrackingDismissed()
-                                    this.getMapboxMap().flyTo(cameraOptions {
+                                repo?.let {jsonEl ->
+                                    model.reportId.value = jsonEl.asString
+                                    model.whichButtonClicked.value = 4
+                                    isShowReport.value = true
+                                    val screenHe = Resources.getSystem().displayMetrics.heightPixels
+                                    if (lat != null && lon != null){
+                                        model.onCameraTrackingDismissed()
+                                        this.getMapboxMap().flyTo(cameraOptions {
                                             center(Point.fromLngLat(lon,lat))
                                             zoom(15.5)
                                             pitch(10.0)
                                             padding(EdgeInsets(0.0,0.0, screenHe/3.3,0.0))
                                         },MapAnimationOptions.mapAnimationOptions { duration(500)}
                                         )
+                                    }
                                 }
-                                true
+                                false
                             })
                         }
 
@@ -481,13 +396,16 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
                     }
                 }
             }
-            if (model.currentUserTier.value == UserTiers.ADMIN){
-                getMapboxMap().addOnMapLongClickListener{point ->
+
+            getMapboxMap().addOnMapLongClickListener{point ->
+                if (model.currentUserTier.value == UserTiers.ADMIN){
                     model.isPointClicked.value = true
                     pointClickedOnMap.value = GeoPoint(point.latitude(),point.longitude())
                     model.createClickedPin(point.latitude(),point.longitude())
                     Toast.makeText(context,"Please wait...", Toast.LENGTH_SHORT).show()
                     model.fetchReports(point.latitude(),point.longitude())
+                    true
+                }else{
                     false
                 }
             }
@@ -502,43 +420,14 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
         }
 
     }
-    LaunchedEffect(Unit){
-        val adRequest = AdRequest.Builder().build()
-        InterstitialAd.load(context, context.getString(R.string.interstitial_ad_three_stop_id) , adRequest, object : InterstitialAdLoadCallback() {
-            override fun onAdFailedToLoad(adError: LoadAdError) {
-                mInterstitialAd = null
-            }
-            override fun onAdLoaded(interstitialAd: InterstitialAd) {
-                mInterstitialAd = interstitialAd
-            }
-        })
-        RewardedAd.load(context,context.getString(R.string.remove_ads_rewarded_video_id) ,adRequest,object : RewardedAdLoadCallback(){
-            override fun onAdFailedToLoad(adError: LoadAdError) {
-                mRewardedAd = null
-                isRewardedVideoReady.value = false
-            }
-            override fun onAdLoaded(rewardedAd: RewardedAd) {
-                mRewardedAd = rewardedAd
-                isRewardedVideoReady.value = true
-//            Toast.makeText(context,"loaded",Toast.LENGTH_LONG).show()
-            }
-        })
-        mRewardedAd?.fullScreenContentCallback = object: FullScreenContentCallback() {
-            override fun onAdClicked() {}
-            override fun onAdDismissedFullScreenContent() {
-                mRewardedAd = null
-                isRewardedVideoReady.value = false
-            }
-            override fun onAdImpression() {}
-            override fun onAdShowedFullScreenContent() {}
-        }
-    }
-    if (model.stopCount.value == 4){
+
+    if (model.stopCount.value == 2){
         model.stopCount.value = 0
         if (!isPurchasedAdRemove.value){
-            mInterstitialAd?.show(context)
+            model.mInterstitialAd?.show(context)
         }
     }
+
     LaunchedEffect(Unit){
         model.getUid()?.let {
             model.loadUserInfoFromFirebase()
@@ -561,7 +450,7 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
         Log.d("DEBUG_DEBUG_MODE","hey")
         ModalBottomSheetLayout(
             sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-            isShowReport = isShowReport.value,
+            isShowReport = { isShowReport.value },
             sheetContent =
             {
                 when (model.whichButtonClicked.value) {
@@ -641,12 +530,12 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
                                 modalSheetState.hide()
                             }
                         }, onClickWatchVideo = {
-                            if(isRewardedVideoReady.value){
-                                mRewardedAd?.show(context) {
+                            if(model.isRewardedVideoReady.value){
+                                model.mRewardedAd?.show(context) {
                                     Log.d("TAG_AD_DEB", "User earned the reward.${it.type} , ${it.amount}")
                                     coroutineScope.launch { isPurchasedAdRemove.value = true  }
                                     model.saveWatchAdTime(Timestamp.now())
-                                }
+                                } ?: Toast.makeText(context,"please wait.", Toast.LENGTH_LONG).show()
                             }else{
                                 Toast.makeText(context,"please wait.", Toast.LENGTH_LONG).show()
                             }
@@ -673,7 +562,7 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
                             if (isWithNotification){
                                 val req = Request
                                     .Builder()
-                                    .url("https://us-central1-cee-platform-87d21.cloudfunctions.net/sendNotificationForSpaceficLocation?latitude=${point.latitude}&longitude=${point.longitude}&radius=1&type=${type}&description=${description}&title=${title}")
+                                    .url("https://us-central1-cee-platform-87d21.cloudfunctions.net/sendNotificationForSpecificLocations?latitude=${point.latitude}&longitude=${point.longitude}&radius=1&type=${type}&description=${description}&title=${title}")
                                     .post("{}".toRequestBody("application/json".toMediaType()))
                                     .build()
 
@@ -726,7 +615,16 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
             },
             sheetState = modalSheetState,
             modifier = Modifier.fillMaxSize(),
+            scrimContent = {
+                annotationReportType.value?.let{
+                    getReportTypeByReportTypeAndSpeedLimit(it,annotationReportSpeedLimit.value)?.let { it1 ->
+                        Icon(modifier = Modifier.size(130.dp),painter = painterResource(id = it1) , contentDescription ="", tint = Color.Unspecified )
+                    }
+                }
+
+            },
             content = {
+                Log.d("DEBUG_BOTTOM_SHEET_TRIGGER","hey")
                 BottomSheetScaffold(
                     sheetPeekHeight = 0.dp,
                     sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
@@ -784,16 +682,16 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(color = MaterialTheme.colors.background)
-                            ) {
+                                    .background(color = MaterialTheme.colors.background))
+                            {
                                 if(model.isChangeInZone1.value){
                                     model.allReports.sortBy {report->
                                         report.geoLocation?.let { location->
                                             val reportLocation = Location("")
                                             reportLocation.latitude = location[0] as Double
                                             reportLocation.longitude = location[1] as Double
-                                            model.lastLocation.value.distanceTo(reportLocation)
-                                        }
+                                            model.lastLocation.value.distanceTo(reportLocation).toInt()
+                                        } ?: 9999999
                                     }
                                     model.createMarkerOnMap(model.allReports)
                                     model.isChangeInZone1.value = false
@@ -843,7 +741,7 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
                                                     easing = FastOutSlowInEasing
                                                 ),
                                                 repeatMode = RepeatMode.Reverse
-                                            )
+                                            ), label = ""
                                         )
                                         Box(
                                             modifier = Modifier
@@ -1207,7 +1105,7 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
                                                         modalSheetState.show()
                                                     }
                                                 },
-                                                isAdLoaded = isRewardedVideoReady.value,
+                                                isAdLoaded = model.isRewardedVideoReady.value,
                                                 isWatchedRewardVideo = { isPurchasedAdRemove.value },
                                                 timeRemain = timeRemainInt,
                                             )
@@ -1433,7 +1331,7 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
                                                             if (response.isSuccess) {
                                                                 showRegisterDialog.value = false
                                                             } else {
-                                                                errorModalTitle.value = response.serverMessage
+                                                                errorModalTitle.value = response.message
                                                                 errorModalDescription.value = null
                                                                 showErrorModal.value = true
                                                             }
@@ -1457,9 +1355,9 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
                                                         ).collect { response ->
                                                             if (response.isSuccess) {
                                                                 showEditReportDialog.value = false
-                                                                Toast.makeText(context, response.serverMessage, Toast.LENGTH_SHORT).show()
+                                                                Toast.makeText(context, response.message, Toast.LENGTH_SHORT).show()
                                                             } else {
-                                                                errorModalTitle.value = response.serverMessage
+                                                                errorModalTitle.value = response.message
                                                                 errorModalDescription.value = null
                                                                 showErrorModal.value = true
                                                             }
@@ -1616,39 +1514,122 @@ fun MainMapScreen(model : HomeViewModel,navController: NavController) {
             }
         }
 
-        LaunchedEffect(GeofenceBroadcastReceiver.GBRS.GeoId.value != null && GeofenceBroadcastReceiver.GBRS.GeoId.value != reportId){
-            if (GeofenceBroadcastReceiver.GBRS.GeoId.value != null && GeofenceBroadcastReceiver.GBRS.GeoId.value != reportId){
-                model.addAlertCount(alertCount.value)
-                reportId = GeofenceBroadcastReceiver.GBRS.GeoId.value!!
-                model.inSideReportToast.value = true
-                model.inSideReport.value = true
-                model.saveAlerts(SaveUserInfoInAlerted(
-                    userName = username.value,
-                    userAvatar = userAvatar.value,
-                    reportId = reportId
-                ))
-                model.getSingleReport(reportId).collect{
-                    if (it.isSuccess){
-                        singleReport.value = it
-                        model.isLiked.value = null
+//        LaunchedEffect(GeofenceBroadcastReceiver.GBRS.GeoId.value != null && GeofenceBroadcastReceiver.GBRS.GeoId.value != reportId){
+//            if (GeofenceBroadcastReceiver.GBRS.GeoId.value != null && GeofenceBroadcastReceiver.GBRS.GeoId.value != reportId){
+//                model.addAlertCount(alertCount.value)
+//                reportId = GeofenceBroadcastReceiver.GBRS.GeoId.value!!
+//                model.inSideReportToast.value = true
+//                model.inSideReport.value = true
+//                model.saveAlerts(SaveUserInfoInAlerted(
+//                    userName = username.value,
+//                    userAvatar = userAvatar.value,
+//                    reportId = reportId
+//                ))
+//                model.getSingleReport(reportId).collect{
+//                    if (it.isSuccess){
+//                        singleReport.value = it
+//                        model.isLiked.value = null
+//                    }
+//                }
+//            }else{
+//                if(GeofenceBroadcastReceiver.GBRS.GeoId.value == null){
+//                    alarm.value = false
+//                    model.inSideReportToast.value = false
+//                }
+//            }
+//        }
+//        if(GeofenceBroadcastReceiver.GBRS.isExit.value == true){
+//            LaunchedEffect(Unit){
+//                delay(5000)
+//                model.slider.value = true
+//                GeofenceBroadcastReceiver.GBRS.isExit.value = false
+//            }
+//        }
+
+        val appLinkIntent: Intent = activity.intent
+        appLinkIntent.action
+        LaunchedEffect(appLinkIntent.data != null){
+            appLinkIntent.data?.let {data->
+                data.pathSegments[0]?.let {actionType->
+                    Log.d("MAIN_ACTIVITY_PREV", "1:  $actionType")
+                    model.onCameraTrackingDismissed()
+                    if (actionType == "report"){
+                        data.pathSegments[1]?.let { id->
+                            if(id != oldId){
+                                oldId = id
+                                Log.d("MAIN_ACTIVITY_PREV", "2:  $id")
+                                model.getSingleReportForSharedLink(id)?.let{
+                                    delay(4000)
+                                    model.allReports.add(it)
+                                    model.reportId.value = id
+                                    model.whichButtonClicked.value = 4
+                                    it.geoLocation?.let {loco->
+                                        isShowReport.value = true
+                                        val screenHe = Resources.getSystem().displayMetrics.heightPixels
+                                        if (loco != Location("")){
+                                            model.onCameraTrackingDismissed()
+                                            model.mapView.getMapboxMap().flyTo(cameraOptions {
+                                                center(Point.fromLngLat(loco[1] as Double,loco[0] as Double))
+                                                zoom(15.5)
+                                                pitch(10.0)
+                                                padding(EdgeInsets(0.0,0.0, screenHe/3.3,0.0))
+                                            },MapAnimationOptions.mapAnimationOptions { duration(1500)}
+                                            )
+                                        }
+                                    }
+                                    isShowReportFromDeepLink.value = true
+//                                modalSheetState.show()
+//                                coroutineScope.launch {
+//
+//                                }
+
+                                }
+
+                            }
+
+                        }
+                    }else {
+                        data.pathSegments[1]?.let{uid->
+                            data.pathSegments[2]?.let {tripId->
+                                val islandRef = storageRef.child("SharedTrips/$uid/$tripId")
+                                val localFile = File.createTempFile("temp_trip", "trip")
+                                try{
+                                    coroutineScope.launch {
+                                        islandRef.getFile(localFile).await()
+                                        val jsonString = localFile.readText()
+                                        val trip : Trip = Gson().fromJson(jsonString,Trip::class.java)
+                                        model.saveTrip(trip)
+                                    }
+
+                                }catch(e :IOException){
+                                    Log.d("MAIN_ACTIVITY_PREV", "10:  ${e.message}")
+                                }
+                            }
+                        }
+//                if(actionType == "trip"){
+//
+//                }
                     }
                 }
-            }else{
-                if(GeofenceBroadcastReceiver.GBRS.GeoId.value == null){
-                    alarm.value = false
-                    model.inSideReportToast.value = false
+            }
+        }
+        val nearestReport = model.allReports.firstOrNull()
+        nearestReport?.let {report->
+            if (report.reportType == 1 || report.reportType == 2 || report.reportType == 3 || report.reportType == 5 || report.reportType == 6){
+                val reportLocation = Location("")
+                reportLocation.latitude = report.geoLocation?.get(0) as Double
+                reportLocation.longitude = report.geoLocation?.get(1) as Double
+                Log.d("DEBUG_NEAREST_REPORT_DIS","hey")
+                if (model.lastLocation.value.distanceTo(reportLocation) < 1000){
+                    model.isNearReport.value = true
+                    model.distanceAway.value = (model.lastLocation.value.distanceTo(reportLocation) *100.0).roundToInt() / 100.0
+                    model.nearReportType.value = report.reportType
+                }else{
+                    model.isNearReport.value = false
+                    model.distanceAway.value = 0.0
                 }
             }
         }
-        if(GeofenceBroadcastReceiver.GBRS.isExit.value == true){
-            LaunchedEffect(Unit){
-                delay(5000)
-                model.slider.value = true
-                GeofenceBroadcastReceiver.GBRS.isExit.value = false
-            }
-        }
-
-
     }
 }
 fun Modifier.innerShadow(
@@ -1714,4 +1695,33 @@ fun Modifier.innerShadow(
         frameworkPaint.xfermode = null
         frameworkPaint.maskFilter = null
     }
+}
+enum class ButtonState { Pressed, Idle }
+fun Modifier.pressClickEffect() = composed {
+    var buttonState by remember { mutableStateOf(ButtonState.Idle) }
+    val scalee by animateFloatAsState(if (buttonState == ButtonState.Pressed) 0.95f else 1f,
+        label = ""
+    )
+
+    this
+        .graphicsLayer {
+            scaleX = scalee
+            scaleY = scalee
+        }
+        .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = { }
+        )
+        .pointerInput(buttonState) {
+            awaitPointerEventScope {
+                buttonState = if (buttonState == ButtonState.Pressed) {
+                    waitForUpOrCancellation()
+                    ButtonState.Idle
+                } else {
+                    awaitFirstDown(false)
+                    ButtonState.Pressed
+                }
+            }
+        }
 }

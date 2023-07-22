@@ -63,7 +63,7 @@ fun privacy (onClickBack:()->Unit){
                 IconButton(onClick = onClickBack, modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)) {
                     Icon(modifier = Modifier
                         .size(20.dp)
-                        .rotate(rotate), tint = Color.Gray , painter = painterResource(id = R.drawable.ic_arrow_back), contentDescription ="" )
+                        .rotate(rotate), tint = Color.Gray , painter = painterResource(id = R.drawable.ic_arrow_left), contentDescription ="" )
                 }
             }
         }

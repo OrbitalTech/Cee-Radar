@@ -43,27 +43,23 @@ fun RemoveAds(
 
     Column(modifier = Modifier
         .fillMaxWidth()
-        .fillMaxHeight(
-            fraction = if (!isWatched.value) {
-                0.58f
-            } else {
-                0.45f
-            }
-        )
         .background(
             color = Color.White,
             shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
         ), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(modifier = Modifier.fillMaxWidth()){
-            Box(modifier = Modifier
+            Row(modifier = Modifier
+                .padding(top = 24.dp, start = 24.dp,end = 20.dp, bottom = 16.dp)
                 .fillMaxWidth()
-                .padding(start = 15.dp, end = 15.dp, top = 15.dp), contentAlignment = Alignment.Center) {
+                .height(50.dp)
+                , verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                 Text(text =if (isWatched.value){ stringResource(id = R.string.lbl_home_adFree_sheet_freeOfAds_title)}else{
-                    stringResource(id = R.string.lbl_home_adFree_sheet_removeAds_title)}, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                    stringResource(id = R.string.lbl_home_adFree_sheet_removeAds_title)}, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
-            Box(modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 15.dp, end = 15.dp, top = 15.dp), contentAlignment = Alignment.CenterEnd) {
+            Row(modifier = Modifier
+                .padding(top = 24.dp, start = 24.dp,end = 20.dp, bottom = 16.dp)
+                .fillMaxWidth().height(50.dp)
+                , verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
                 IconButton(onClick = onClickClose) {
                     Icon(modifier = Modifier.size(20.dp),painter = painterResource(id = R.drawable.ic_close), tint = Color(
                         0xFFB9B9B9
@@ -72,49 +68,44 @@ fun RemoveAds(
             }
         }
         Box(modifier = Modifier
-            .fillMaxWidth(0.8f)
-            .fillMaxHeight(
-                fraction = if (isWatched.value) {
-                    0.35f
-                } else {
-                    0.45f
-                }
-            ), contentAlignment = Alignment.Center){
+            .fillMaxWidth(0.8f), contentAlignment = Alignment.Center){
 
             LottieAnimation(
                 composition,
                 progress,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .width(233.dp)
+                    .height(200.dp)
             )
 
 //            Icon(modifier = Modifier
 //                .fillMaxWidth()
 //                .fillMaxHeight(), painter = painterResource(id = if(isWatched.value){R.drawable.vector_cee_watched_rewarded}else{ R.drawable.img_cee_ads_remove}), tint = Color.Unspecified, contentDescription = "")
         }
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Text(text = if(isWatched.value){ stringResource(id = R.string.lbl_home_adFree_sheet_freeOfAds_description)}else{ stringResource(id = R.string.lbl_home_adFree_sheet_removeAds_description)}, color = Color(0xFF727272),fontSize = 16.sp, fontWeight = FontWeight.W500,fontFamily  = FontFamily(Font(R.font.work_sans_medium)), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(0.8f))
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(25.dp))
         if (isWatched.value){
             Button(onClick = onClickClose, modifier = Modifier
                 .fillMaxWidth(0.8f)
-                .height(55.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF495CE8))) {
-                Text(text = stringResource(id = R.string.btn_home_alert_done), fontFamily  = FontFamily(Font(R.font.work_sans_medium)), fontWeight = FontWeight.ExtraBold, color = Color.White)
+                .height(55.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF495CE8))) {
+                Text(text = stringResource(id = R.string.btn_home_alert_done), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }else{
             Button(onClick = onClickWatchVideo, modifier = Modifier
                 .fillMaxWidth(0.8f)
-                .height(55.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF495CE8))) {
-                Text(text = stringResource(id = R.string.btn_home_adFree_sheet_watch_ad), fontFamily  = FontFamily(Font(R.font.work_sans_medium)), fontWeight = FontWeight.ExtraBold, color = Color.White)
+                .height(55.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF495CE8))) {
+                Text(text = stringResource(id = R.string.btn_home_adFree_sheet_watch_ad),fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
 
-        Spacer(modifier = Modifier.height(5.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         if (!isWatched.value){
             TextButton(onClick = { onClickClose.invoke() }) {
-                Text(text = stringResource(id = R.string.btn_home_adFree_sheet_dont_remove_ad),color = Color(0xFF727272))
+                Text(text = stringResource(id = R.string.btn_home_adFree_sheet_dont_remove_ad), fontSize = 14.sp,color = Color(0xFF727272))
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(35.dp))
         }
 
 

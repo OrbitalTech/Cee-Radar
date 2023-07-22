@@ -187,4 +187,19 @@
     <string name="inside_geofence_notification_description">لقد حددنا خطر الطريق القريب ، فتابع بحذر!</string>
     <string name="lbl_reach_permitted_quota_report_description">لقد وصلت إلى الحصة المسموح بها من التقارير</string>
     <string name="lbl_reach_permitted_quota_report_title">تجاوز الحد</string>
+    <string name="lbl_road_pathhole">ممر</string>
+    <string name="lbl_reliability">مصداقية</string>
+    <string name="lbl_very_High">عالي جدا</string>
+    <string name="lbl_low">قليل</string>
+    <string name="lbl_medium">واسطة</string>
+    <string name="lbl_high">عالي</string>
+    <string name="lbl_by">بواسطة</string>
+    <string name="lbl_top_toast_nearest_report">في طريقك</string>
+    <string name="lbl_menu_hi_guest">أهلاً! حساب زائر</string>
+    <string name="lbl_menu_create_account">قم بإنشاء حساب للوصول إلى جميع الميزات</string>
+    <string name="lbl_menu_ceekerbottomshet_trust_level">مستوى الثقة</string>
+    <string name="lbl_menu_ceekerbottomshet_number_of_reports">التقارير</string>
+    <string name="lbl_menu_ceekerbottomshet_trust_point">نقاط الثقة</string>
+    <string name="lbl_menu_ceekerbottomshet_points_next_level">يشير إلى المستوى التالي</string>
+    <string name="lbl_menu_ceekerbottomshet_as_you_help">بينما تساعد الأشخاص الآخرين ، تكسب نقاطًا مقابل كل مساهمة وتقترب من المستوى التالي. تعلم المزيد عن</string>
 </resources>

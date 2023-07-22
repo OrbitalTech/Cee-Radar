@@ -33,6 +33,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.orbital.cee.R
+import com.orbital.cee.view.pressClickEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -86,18 +87,12 @@ fun TopBar(onClickMenu : () -> Unit,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Box(modifier = Modifier
-            .clickable(onClick = {
-                coroutineScope.launch {
-                    scale.animateTo(0.8f, animationSpec = spring())
-                    scale.animateTo(1f, animationSpec = spring())
-                }
-                onClickMenu()
-            }, indication = null, interactionSource = remember { MutableInteractionSource() })
-                .scale(scale.value), contentAlignment = Alignment.Center
+            .pressClickEffect()
+            .clickable(onClick = onClickMenu, indication = null, interactionSource = remember { MutableInteractionSource() }), contentAlignment = Alignment.Center
         ) {
             Icon(painter = painterResource(id = R.drawable.bg_btn_top_nav_menu), contentDescription = "", tint = Color.Unspecified)
             Icon(
-                painter = painterResource(id = R.drawable.ic_menu_drawer),
+                painter = painterResource(id = R.drawable.ic_menu),
                 modifier = Modifier.size(28.dp),
                 contentDescription = "",
                 tint = Color(0xFF495CE8)
@@ -108,6 +103,7 @@ fun TopBar(onClickMenu : () -> Unit,
             if (isAdLoaded || isWatchedRewardVideo()){
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(modifier = Modifier
+                        .pressClickEffect()
                         .clickable(onClick = onClickAds, indication = null, interactionSource = remember { MutableInteractionSource() }), contentAlignment = Alignment.Center
                     ) {
                         Icon(painter = painterResource(id = R.drawable.bg_btn_top_nav_menu), contentDescription = "", tint = Color.Unspecified)
@@ -121,8 +117,8 @@ fun TopBar(onClickMenu : () -> Unit,
                             }
                             if(isWatchedRewardVideo()){
                                 Box(contentAlignment = Alignment.Center){
-                                    Icon(painter = painterResource(id = R.drawable.bg_btn_top_nav_menu), contentDescription = "", tint = Color.Unspecified)
-                                    Canvas(modifier = Modifier.size(58.dp)) {
+                                    Icon(modifier = Modifier.size(50.dp),painter = painterResource(id = R.drawable.bg_btn_top_nav_menu), contentDescription = "", tint = Color.Unspecified)
+                                    Canvas(modifier = Modifier.size(55.dp)) {
 
                                         if (path.isEmpty) {
                                             path.addRoundRect(

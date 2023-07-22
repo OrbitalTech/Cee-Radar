@@ -92,7 +92,7 @@ fun AddReportManuallyModal(onPositiveClick: (point: GeoPoint, type:Int, time: Ti
     items.add(
         ActionsButtonModel(
             id = 3,
-            icon = R.drawable.ic_police,
+            icon = R.drawable.ic_new_police,
             title = stringResource(id = R.string.btn_home_report_action_sheet_police),
             color1 = Color(0XFF36B5FF),
             color2 = Color(0x1A36B5FF)
@@ -101,7 +101,7 @@ fun AddReportManuallyModal(onPositiveClick: (point: GeoPoint, type:Int, time: Ti
     items.add(
         ActionsButtonModel(
             id = 2,
-            icon = R.drawable.ic_car_crash,
+            icon = R.drawable.ic_carcrash,
             title = stringResource(id = R.string.btn_home_report_action_sheet_carCrash),
             color1 = Color(0XFFF27D28),
             color2 = Color(0x1AF27D28)

@@ -96,8 +96,8 @@ fun SheetNearestIncident(list: MutableIterator<NewReport>,currentLocation : Loca
                         Icon(modifier = Modifier.size(25.dp),painter = painterResource(
                             id = when(report.reportType){
                                 1->R.drawable.ic_camera_fab
-                                2->R.drawable.ic_car_crash
-                                3->R.drawable.ic_police
+                                2->R.drawable.ic_carcrash
+                                3->R.drawable.ic_new_police
                                 4->R.drawable.ic_new_construction
                                 5->R.drawable.ic_static_camera
                                 6->R.drawable.ic_point_to_point_camera

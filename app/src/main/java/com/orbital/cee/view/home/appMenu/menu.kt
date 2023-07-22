@@ -3,7 +3,6 @@ package com.orbital.cee.view.home.components
 import android.graphics.*
 import android.net.Uri
 import android.os.Build
-import android.provider.MediaStore
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
@@ -59,6 +58,7 @@ import com.orbital.cee.view.home.appMenu.Setting
 import com.orbital.cee.view.home.appMenu.help
 import com.orbital.cee.view.home.appMenu.privacy
 import com.orbital.cee.view.language.language
+import com.orbital.cee.view.pressClickEffect
 import com.orbital.cee.view.sound.sound
 import kotlinx.coroutines.launch
 import java.math.RoundingMode
@@ -90,7 +90,7 @@ fun menu(model : HomeViewModel = viewModel(), onCloseDrawer:() -> Unit,navContro
         reportCounts.value = model.getMyReportCount()
         model.loadUserInfoFromFirebase().collect{
             if (!it.isSuccess){
-                if(it.serverMessage != "unauthorized"){
+                if(it.message != "unauthorized"){
                     onCloseDrawer()
                     Toast.makeText(context,"unable",Toast.LENGTH_LONG).show()
                 }
@@ -226,7 +226,7 @@ Box(
                     Row(verticalAlignment = Alignment.CenterVertically){
                         Icon(modifier = Modifier
                             .size(22.dp)
-                            .rotate(rotate), tint = Color(0XFF495CE8) , painter = painterResource(id = R.drawable.ic_arrow_back), contentDescription ="" )
+                            .rotate(rotate), tint = Color(0XFF495CE8) , painter = painterResource(id = R.drawable.ic_arrow_left), contentDescription ="" )
                         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                             LottieAnimation(
                                 appmenue,
@@ -287,16 +287,17 @@ Box(
                 Column(modifier = Modifier
                     .fillMaxWidth()
                     .height(175.dp)
-                    .clickable(onClick = onClickCreateAccount,indication = null,
+                    .pressClickEffect()
+                    .clickable(onClick = onClickCreateAccount, indication = null,
                         interactionSource = remember { MutableInteractionSource() })
                     .padding(top = 10.dp)
                     .background(color = light_purple, shape = RoundedCornerShape(20.dp))
                     .padding(top = 20.dp, start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.SpaceBetween){
                     Column() {
-                        Text(text = "Hi! Guest User", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = blurple)
+                        Text(text = stringResource(id = R.string.lbl_menu_hi_guest), fontSize = 14.sp, fontWeight = FontWeight.Medium, color = blurple)
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Create account to access all features",
+                            text = stringResource(id = R.string.lbl_menu_create_account),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.fillMaxWidth(0.6f)
@@ -312,18 +313,20 @@ Box(
                         LottieAnimation(
                             composition1,
                             progress1,
-                            modifier = Modifier.height(52.dp).width(146.dp)
+                            modifier = Modifier
+                                .height(52.dp)
+                                .width(146.dp)
                         )
 
                     }
                 }
             }else{
                 Row(modifier = Modifier
-                    .pointerInput(Unit) {
-                        detectTapGestures(onTap = {
-                            navController.navigate("setting")
-                        })
-                    }
+                    .pressClickEffect()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { navController.navigate("setting") })
                     .fillMaxWidth()
                     .height(95.dp)
                     .padding(top = 10.dp)
@@ -334,20 +337,15 @@ Box(
                             coroutineScope.launch {
                                 model.uploadPhotos(it).collect{response ->
                                     if (response.isSuccess){
-                                        Toast.makeText(context, response.serverMessage,Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, response.message,Toast.LENGTH_LONG).show()
                                         imageUri = null
                                     }else{
-                                        Toast.makeText(context, response.serverMessage,Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, response.message,Toast.LENGTH_LONG).show()
                                     }
                                 }
                             }
-
-                            if (Build.VERSION.SDK_INT < 28){
-                                bitmap.value = MediaStore.Images.Media.getBitmap(context.contentResolver,it)
-                            }else{
-                                val source = ImageDecoder.createSource(context.contentResolver,it)
-                                bitmap.value = ImageDecoder.decodeBitmap(source)
-                            }
+                            val source = ImageDecoder.createSource(context.contentResolver,it)
+                            bitmap.value = ImageDecoder.decodeBitmap(source)
                         }
                         Card(
                             Modifier.size(55.dp),
@@ -528,14 +526,15 @@ Box(
                 .padding(top = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
 
                 Box(modifier = Modifier
+                    .pressClickEffect()
                     .clickable(
                         onClick = {
-                            if(model.isGuest()){
+                            if (model.isGuest()) {
                                 onClickCreateAccount()
-                            }else{
+                            } else {
                                 onClickCeeKer()
                             }
-                            },
+                        },
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() })
                     .size((boxWH - 5).dp, boxWH.dp)
@@ -572,11 +571,12 @@ Box(
                 Spacer(modifier = Modifier.width(10.dp))
                 Box(modifier = Modifier
                     .size(boxWH.dp)
+                    .pressClickEffect()
                     .clickable(
                         onClick = {
-                            if(model.isGuest()){
+                            if (model.isGuest()) {
                                 onClickCreateAccount()
-                            }else{
+                            } else {
                                 navController.navigate("themes")
                             }
 

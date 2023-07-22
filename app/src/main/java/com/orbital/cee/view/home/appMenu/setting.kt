@@ -112,7 +112,7 @@ fun Setting( model: HomeViewModel,onClickDone: ()-> Unit) {
                                         model.updateUserInfo(fullName.value,phone.value,email.value,gender.value).collect{
                                             isChange = false
                                             model.loadUserInfoFromFirebase()
-                                            Toast.makeText(context,it.serverMessage,Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context,it.message,Toast.LENGTH_LONG).show()
                                         }
 //                                    if (email.value.length >= 10 && email.value.contains("@")){
 //
@@ -192,9 +192,9 @@ fun Setting( model: HomeViewModel,onClickDone: ()-> Unit) {
                         coroutineScope.launch {
                             model.uploadPhotos(it).collect{response ->
                                 if (response.isSuccess){
-                                    Toast.makeText(context, response.serverMessage, Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, response.message, Toast.LENGTH_LONG).show()
                                 }else{
-                                    Toast.makeText(context, response.serverMessage, Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, response.message, Toast.LENGTH_LONG).show()
                                 }
                             }
                         }

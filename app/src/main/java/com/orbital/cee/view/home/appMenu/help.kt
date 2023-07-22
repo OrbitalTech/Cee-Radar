@@ -79,7 +79,7 @@ fun help (onClickBack:()-> Unit) {
             Text(text = "Help Center", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 20.sp)
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart){
                 IconButton(onClick = onClickBack, modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)) {
-                    Icon(modifier = Modifier.size(20.dp).rotate(rotate), tint = Color.Gray , painter = painterResource(id = R.drawable.ic_arrow_back), contentDescription ="" )
+                    Icon(modifier = Modifier.size(20.dp).rotate(rotate), tint = Color.Gray , painter = painterResource(id = R.drawable.ic_arrow_left), contentDescription ="" )
                 }
             }
         }

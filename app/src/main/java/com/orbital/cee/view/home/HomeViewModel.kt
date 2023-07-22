@@ -33,6 +33,8 @@ import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.firebase.geofire.GeoFireUtils
 import com.firebase.geofire.GeoLocation
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
@@ -159,9 +161,9 @@ class HomeViewModel @Inject  constructor(
 //    val onlineUserCounter = mutableStateOf(0)
     val clickedUserId = mutableStateOf("")
 
-    val deepLinkActionType = mutableStateOf<String?>(null)
-    val deepLinkFirstArg = mutableStateOf<String?>(null)
-    val deepLinkSecondArg = mutableStateOf<String?>(null)
+//    val deepLinkActionType = mutableStateOf<String?>(null)
+//    val deepLinkFirstArg = mutableStateOf<String?>(null)
+//    val deepLinkSecondArg = mutableStateOf<String?>(null)
 //    val speedPercent = mutableStateOf(0.0f)
     var whichButtonClicked = mutableStateOf(0)
     val slider = mutableStateOf(false)
@@ -169,7 +171,7 @@ class HomeViewModel @Inject  constructor(
     val inSideReport = mutableStateOf(false)
     val usersFound = mutableStateOf(false)
 //    val isDarkModeEnabled = mutableStateOf(false)
-    var reportId = mutableStateOf("")
+    var reportId = mutableStateOf<String>("")
     val myReports = mutableListOf<SingleCustomReport>()
     val resultUser = mutableListOf<UserNameAndID>()
     var temperature = mutableStateOf<Int?>(null)
@@ -195,6 +197,10 @@ class HomeViewModel @Inject  constructor(
     val currentUserTier: MutableLiveData<UserTiers> = MutableLiveData(UserTiers.GUEST)
     private val currentUserPermission: MutableLiveData<UserPermission> = MutableLiveData(UserPermission())
     val stopCount =  mutableStateOf(0)
+
+    var mRewardedAd : RewardedAd? = null
+    var mInterstitialAd: InterstitialAd? = null
+    val isRewardedVideoReady = mutableStateOf(false)
     private val tempReports1 = mutableListOf<NewReport>()
     private val tempGeofence1 = mutableListOf<Geofence>()
     private val tempReports2 = mutableListOf<NewReport>()
@@ -218,6 +224,15 @@ class HomeViewModel @Inject  constructor(
         retrieveUserType()
         retrieveIsDebugMode()
         retrieveIsPreventScreenSleep()
+        retrieveReportMuted()
+    }
+
+    private fun retrieveReportMuted(){
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreRepository.readMuted.collect{
+                MyLocationService.LSR.allMutedReports.addAll(it.mutedReports)
+            }
+        }
     }
 
     private fun retrieveUserType() {
@@ -249,6 +264,7 @@ class HomeViewModel @Inject  constructor(
         }
 
     }
+
      val onDragAnnotation = object : OnPointAnnotationDragListener{
         override fun onAnnotationDrag(annotation: Annotation<*>) {
         }
@@ -272,10 +288,6 @@ class HomeViewModel @Inject  constructor(
             val report : HashMap<String, Any> = HashMap<String, Any>()
             report["g"] = hash
             report["geoLocation"] = listOf(point.latitude, point.longitude)
-            Log.d("DEBUG_DRAG_ANNOTATION", reportId)
-            Log.d("DEBUG_DRAG_ANNOTATION", point.latitude.toString())
-            Log.d("DEBUG_DRAG_ANNOTATION", point.longitude.toString())
-            Log.d("DEBUG_DRAG_ANNOTATION", hash)
             db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(reportId).update(report)
         }catch (e:Exception){
             Log.d("DEBUG_HOME_VIEW_MODEL", "updateReportLocation() : ${e.message.toString()}")
@@ -361,6 +373,9 @@ class HomeViewModel @Inject  constructor(
                 val hash = GeoFireUtils.getGeoHashForLocation(GeoLocation(geoPoint.latitude, geoPoint.longitude))
                 val report : HashMap<String, Any> = HashMap<String, Any>()
                 val reportt : HashMap<String, Any> = HashMap<String, Any>()
+
+
+
 
                 report["g"] = hash
                 report["geoLocation"] = listOf(geoPoint.latitude, geoPoint.longitude)
@@ -500,30 +515,31 @@ class HomeViewModel @Inject  constructor(
             return 0
         }
     }
-     private fun placeReportValidation(reportCounterVal : Int?, lastReportPlaceTime : Long):Boolean{
+     private fun placeReportValidation(reportCounterVal : Int?, lastReportPlaceTime : Long):ResponseDto{
          return currentUserPermission.value?.let {permission->
               if (permission.isCanAddReport){
                  if (permission.reportLimitPerHour == -1){
-                     true
+                     ResponseDto(isSuccess = true,"success")
+
                  }else{
                      if (Timestamp.now().seconds.minus(lastReportPlaceTime) < 360){
                          if((reportCounterVal?:0) > permission.reportLimitPerHour){
-                             false
+                             ResponseDto(isSuccess = false,"success")
                          }else{
                              saveTheTimeOfTheLastReport()
                              incrementReportCountPerOneHour(reportCounterVal ?: 0)
-                             true
+                             ResponseDto(isSuccess = true,"success")
                          }
                      }else{
                          saveTheTimeOfTheLastReport()
                          resetIncrementedReportCounterPerOneHour()
-                         true
+                         ResponseDto(isSuccess = true,"success")
                      }
                  }
              }else{
-                 false
+                  ResponseDto(isSuccess = false,"success")
              }
-         } ?: false
+         } ?: ResponseDto(isSuccess = false,"success")
     }
     private fun resetIncrementedReportCounterPerOneHour() =
         viewModelScope.launch(Dispatchers.IO) {
@@ -561,123 +577,15 @@ class HomeViewModel @Inject  constructor(
                 getReportTypeByReportTypeAndSpeedLimit(i.reportType,i.reportSpeedLimit)?.let {
                     bitmap = convertDrawableToBitMap(AppCompatResources.getDrawable(app,it))
                 }
-
-//                val bitmap = when(i.reportType){
-//                    2->{ convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.marker_crash))}
-//                    3-> {
-//                        convertDrawableToBitMap(
-//                            AppCompatResources.getDrawable(
-//                                app,
-//                                R.drawable.marker_police
-//                            )
-//                        )
-//                    }
-//                    4-> {
-//                        convertDrawableToBitMap(
-//                            AppCompatResources.getDrawable(
-//                                app,
-//                                R.drawable.marker_construction
-//                            )
-//                        )
-//                    }
-//                    5-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,
-//                        when(i.reportSpeedLimit){
-//                            60->{R.drawable.marker_static_camera_60}
-//                            100->{R.drawable.marker_static_camera_100}
-//                            50->{R.drawable.marker_static_camera_50}
-//
-//                            0->{R.drawable.marker_static_camera_0}
-//                            10->{R.drawable.marker_static_camera_10}
-//                            15->{R.drawable.marker_static_camera_15}
-//                            20->{R.drawable.marker_static_camera_20}
-//                            25->{R.drawable.marker_static_camera_25}
-//                            30->{R.drawable.marker_static_camera_30}
-//                            35->{R.drawable.marker_static_camera_35}
-//                            40->{R.drawable.marker_static_camera_40}
-//                            45->{R.drawable.marker_static_camera_45}
-//                            55->{R.drawable.marker_static_camera_55}
-//                            65->{R.drawable.marker_static_camera_65}
-//                            70->{R.drawable.marker_static_camera_70}
-//                            80->{R.drawable.marker_static_camera_80}
-//                            90->{R.drawable.marker_static_camera_90}
-//                            110->{R.drawable.marker_static_camera_110}
-//                            120->{R.drawable.marker_static_camera_120}
-//                            130->{R.drawable.marker_static_camera_130}
-//                            140->{R.drawable.marker_static_camera_140}
-//                            else->{R.drawable.marker_static_camera_0}
-//                        }
-//
-//                    ))
-//                    6-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,
-//                        when(i.reportSpeedLimit){
-//                            60->{R.drawable.marker_point_to_point_60}
-//                            100->{R.drawable.marker_point_to_point_100}
-//                            50->{R.drawable.marker_point_to_point_50}
-//
-//                            0->{R.drawable.marker_point_to_point_0}
-//                            10->{R.drawable.marker_point_to_point_10}
-//                            15->{R.drawable.marker_point_to_point_15}
-//                            20->{R.drawable.marker_point_to_point_20}
-//                            25->{R.drawable.marker_point_to_point_25}
-//                            30->{R.drawable.marker_point_to_point_30}
-//                            35->{R.drawable.marker_point_to_point_35}
-//                            40->{R.drawable.marker_point_to_point_40}
-//                            45->{R.drawable.marker_point_to_point_45}
-//                            55->{R.drawable.marker_point_to_point_55}
-//                            65->{R.drawable.marker_point_to_point_65}
-//                            70->{R.drawable.marker_point_to_point_70}
-//                            80->{R.drawable.marker_point_to_point_80}
-//                            90->{R.drawable.marker_point_to_point_90}
-//                            110->{R.drawable.marker_point_to_point_110}
-//                            120->{R.drawable.marker_point_to_point_120}
-//                            130->{R.drawable.marker_point_to_point_130}
-//                            140->{R.drawable.marker_point_to_point_140}
-//                            else->{R.drawable.marker_point_to_point_0}
-//                        }))
-//                    7-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_red_traffic_tight))
-//                    10-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_marker_road_static_camera))
-//                    11-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.marker_point_to_point_0))
-//                    405-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.marker_static_camera_not_active))
-//                    406-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_disabled_marker_point_to_point_camera))
-//                    1-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,
-//                        when(i.reportSpeedLimit){
-//                            60->{
-//                                R.drawable.marker_road_camera_60
-//                            }
-//                            100->{R.drawable.marker_road_camera_100}
-//                            50->{R.drawable.marker_road_camera_50}
-//
-//                            0->{R.drawable.marker_road_camera_0}
-//                            10->{R.drawable.marker_road_camera_10}
-//                            15->{R.drawable.marker_road_camera_15}
-//                            20->{R.drawable.marker_road_camera_20}
-//                            25->{R.drawable.marker_road_camera_25}
-//                            30->{R.drawable.marker_road_camera_30}
-//                            35->{R.drawable.marker_road_camera_35}
-//                            40->{R.drawable.marker_road_camera_40}
-//                            45->{R.drawable.marker_road_camera_45}
-//                            55->{R.drawable.marker_road_camera_55}
-//                            65->{R.drawable.marker_road_camera_65}
-//                            70->{R.drawable.marker_road_camera_70}
-//                            80->{R.drawable.marker_road_camera_80}
-//                            90->{R.drawable.marker_road_camera_90}
-//                            110->{R.drawable.marker_road_camera_110}
-//                            120->{R.drawable.marker_road_camera_120}
-//                            130->{R.drawable.marker_road_camera_130}
-//                            140->{R.drawable.marker_road_camera_140}
-//                            else->{R.drawable.marker_road_camera_0}
-//                        }
-//                    ))
-//                    8-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.ic_marker_road_hazard))
-//                    else-> null
-//                }
                 bitmap?.let{
                     val jsonObject = JSONObject()
                     jsonObject.put("report",i.reportId)
+                    jsonObject.put("type",i.reportType)
+                    jsonObject.put("speed-limit",i.reportSpeedLimit)
                     jsonObject.put("lat", i.geoLocation?.get(0) ?: 0.0)
                     jsonObject.put("lon", i.geoLocation?.get(1) ?: 0.0)
                     val pointAnnotationOptions : PointAnnotationOptions = PointAnnotationOptions()
-                        .withPoint(Point.fromLngLat(i.geoLocation!![1] as Double, i.geoLocation!![0] as Double))
+                        .withGeometry(Point.fromLngLat(i.geoLocation!![1] as Double, i.geoLocation!![0] as Double))
                         .withData(Gson().fromJson(jsonObject.toString(),JsonElement::class.java))
                         .withIconImage(it)
                         .withIconSize(0.75)
@@ -808,6 +716,7 @@ class HomeViewModel @Inject  constructor(
                     3-> convertDrawableToBitMap(AppCompatResources.getDrawable(app, R.drawable.dot_police))
                     4-> convertDrawableToBitMap(AppCompatResources.getDrawable(app, R.drawable.dot_construction))
                     7-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.dot_red_light_camera))
+                    8-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.dot_road_pathhole))
                     10-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.dot_road_camera))
                     11-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.dot_road_camera))
                     405-> convertDrawableToBitMap(AppCompatResources.getDrawable(app,R.drawable.dot_disable_camera))
@@ -816,6 +725,8 @@ class HomeViewModel @Inject  constructor(
                 }
                 val jsonObject = JSONObject()
                 jsonObject.put("report",i.reportId)
+                jsonObject.put("type",i.reportType)
+                jsonObject.put("speed-limit",i.reportSpeedLimit)
                 jsonObject.put("lat", i.geoLocation?.get(0) ?: 0.0)
                 jsonObject.put("lon", i.geoLocation?.get(1) ?: 0.0)
                 val pointAnnotationOptions : PointAnnotationOptions = PointAnnotationOptions()
@@ -878,11 +789,7 @@ class HomeViewModel @Inject  constructor(
     }
     fun vibrate(context :Context){
         val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (Build.VERSION.SDK_INT >= 26) {
-            vibrator.vibrate(VibrationEffect.createOneShot(75, VibrationEffect.EFFECT_TICK))
-        } else {
-            vibrator.vibrate(75)
-        }
+        vibrator.vibrate(VibrationEffect.createOneShot(75, VibrationEffect.EFFECT_TICK))
     }
     private fun handleException(exception : Exception? = null , customMessage: String = "") {
         exception?.printStackTrace()
@@ -995,18 +902,18 @@ class HomeViewModel @Inject  constructor(
                         downloadUrl.addOnSuccessListener {
                                 remoteUri ->
                             db.collection(DB_REF_USER).document(it1).update("userAvatar",remoteUri.toString()).addOnSuccessListener {
-                                trySend(ResponseDto(isSuccess = true, serverMessage = "Image updated successfully."))
+                                trySend(ResponseDto(isSuccess = true, message = "Image updated successfully."))
                             }.addOnFailureListener {
-                                trySend(ResponseDto(isSuccess = false, serverMessage = "${it.message}"))
+                                trySend(ResponseDto(isSuccess = false, message = "${it.message}"))
                             }
                         }
                     }
                     uploadTask.addOnFailureListener {e->
-                        trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                        trySend(ResponseDto(isSuccess = false, message = "${e.message}"))
                     }
                 }
             }catch (e:Exception){
-                trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                trySend(ResponseDto(isSuccess = false, message = "${e.message}"))
                 Log.d("DEBUG_HOME_VIEW_MODEL", "updateReportLocation() : ${e.message.toString()}")
             }
 
@@ -1044,13 +951,13 @@ class HomeViewModel @Inject  constructor(
                     user["phoneNumber"] = phone
                     user["userGender"] = gender
                     db.collection(DB_REF_USER).document(it).update(user).addOnSuccessListener {
-                        trySend(ResponseDto(isSuccess = true, serverMessage = "User Info updated successfully."))
+                        trySend(ResponseDto(isSuccess = true, message = "User Info updated successfully."))
                     }.addOnFailureListener {e->
-                        trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                        trySend(ResponseDto(isSuccess = false, message = "${e.message}"))
                     }
                 }
             }catch (e:Exception){
-                trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                trySend(ResponseDto(isSuccess = false, message = "${e.message}"))
                 Log.d("DEBUG_HOME_VIEW_MODEL", "updateReportLocation() : ${e.message.toString()}")
             }
             awaitClose{close()}
@@ -1298,7 +1205,7 @@ class HomeViewModel @Inject  constructor(
                     if (it.isComplete) {
                         if (it.result != null) {
                             if (!Utils.isMockLocationEnabled(it.result)){
-                                if(placeReportValidation(reportCountPerOneHour.value, loadTimeOfLastReport.value?:0)){
+                                if(placeReportValidation(reportCountPerOneHour.value, loadTimeOfLastReport.value?:0).isSuccess){
                                     addReport(bearing = it.result.bearing,geoPoint = GeoPoint(it.result.latitude,it.result.longitude), reportType = reportType, speedLimit = speedLimit)
                                 }else{
                                     isReachedQuotaDialog.value = true
@@ -1407,14 +1314,14 @@ class HomeViewModel @Inject  constructor(
                             .document("GeneralStats")
                             .update(statisticHashMap)
                             .addOnSuccessListener {
-                                trySend(ResponseDto(isSuccess = true, serverMessage = "Success"))
+                                trySend(ResponseDto(isSuccess = true, message = "Success"))
                             }.addOnFailureListener {
-                                trySend(ResponseDto(isSuccess = false, serverMessage = it.message.toString()))
+                                trySend(ResponseDto(isSuccess = false, message = it.message.toString()))
                             }
                     }
                 }
             }catch (e:Exception){
-                trySend(ResponseDto(isSuccess = false, serverMessage = e.message.toString()))
+                trySend(ResponseDto(isSuccess = false, message = e.message.toString()))
                 Log.d("HOME_VIEW_MODEL_002",e.message.toString())
                 throw e
             }
@@ -1459,22 +1366,22 @@ class HomeViewModel @Inject  constructor(
                             val user : HashMap<String, Any> = HashMap<String, Any>()
                             user["username"] = userName
                             db.collection(DB_REF_USER).document(uID).update(user).addOnSuccessListener {
-                                trySend(ResponseDto(isSuccess = true, serverMessage = "User Info updated successfully."))
+                                trySend(ResponseDto(isSuccess = true, message = "User Info updated successfully."))
                             }.addOnFailureListener {exception->
-                                trySend(ResponseDto(isSuccess = false, serverMessage = "${exception.message}"))
+                                trySend(ResponseDto(isSuccess = false, message = "${exception.message}"))
                             }
                         }
                     }else{
-                        trySend(ResponseDto(isSuccess = false, serverMessage = "invalid full name"))
+                        trySend(ResponseDto(isSuccess = false, message = "invalid full name"))
                     }
 //                }else{
 //                    trySend(ResponseDto(isSuccess = false, serverMessage = "invalid full name"))
 //                }
                 }else{
-                    trySend(ResponseDto(isSuccess = false, serverMessage = "full name length invalid."))
+                    trySend(ResponseDto(isSuccess = false, message = "full name length invalid."))
                 }
             }catch (e:Exception){
-                trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                trySend(ResponseDto(isSuccess = false, message = "${e.message}"))
                 Log.d("DEBUG_HOME_VIEW_MODEL", "updateReportLocation() : ${e.message}")
             }
 
@@ -1486,15 +1393,15 @@ class HomeViewModel @Inject  constructor(
             try {
                 if (speedLimit != null && reportId != ""){
                     db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG }).document(reportId).update("reportSpeedLimit",speedLimit).addOnSuccessListener {
-                        trySend(ResponseDto(isSuccess = true, serverMessage = "Speed limit updated successfully to $speedLimit."))
+                        trySend(ResponseDto(isSuccess = true, message = "Speed limit updated successfully to $speedLimit."))
                     }.addOnFailureListener {exception->
-                        trySend(ResponseDto(isSuccess = false, serverMessage = "${exception.message}"))
+                        trySend(ResponseDto(isSuccess = false, message = "${exception.message}"))
                     }
                 }else{
-                    trySend(ResponseDto(isSuccess = false, serverMessage = "input Invalid or empty"))
+                    trySend(ResponseDto(isSuccess = false, message = "input Invalid or empty"))
                 }
             }catch (e:Exception){
-                trySend(ResponseDto(isSuccess = false, serverMessage = "${e.message}"))
+                trySend(ResponseDto(isSuccess = false, message = "${e.message}"))
                 Log.d("DEBUG_HOME_VIEW_MODEL", "updateReportLocation() : ${e.message.toString()}")
             }
 

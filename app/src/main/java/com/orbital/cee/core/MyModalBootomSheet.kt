@@ -1,12 +1,12 @@
 package com.orbital.cee.core
 
-import android.util.Log
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.DraggableState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.MaterialTheme
@@ -42,13 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -70,7 +67,6 @@ import androidx.compose.ui.semantics.dismiss
 import androidx.compose.ui.semantics.expand
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -264,7 +260,6 @@ class ModalBottomSheetState @Deprecated(
 
     internal suspend fun snapTo(target: ModalBottomSheetValue) = swipeableState.snapTo(target)
 
-    internal fun requireOffset() = swipeableState.requireOffset()
 
     internal val lastVelocity: Float get() = swipeableState.lastVelocity
 
@@ -506,7 +501,8 @@ fun ModalBottomSheetLayout(
     sheetBackgroundColor: Color = MaterialTheme.colors.surface,
     sheetContentColor: Color = contentColorFor(sheetBackgroundColor),
     scrimColor: Color = ModalBottomSheetDefaults.scrimColor,
-    isShowReport:Boolean = false,
+    isShowReport:()->Boolean,
+    scrimContent: @Composable ()-> Unit,
     content: @Composable () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -532,7 +528,8 @@ fun ModalBottomSheetLayout(
                     }
                 },
                 visible = sheetState.swipeableState.targetValue != ModalBottomSheetValue.Hidden,
-                isShowReport = isShowReport
+                isShowReport = isShowReport(),
+                scrimContent
             )
         }
         Surface(
@@ -646,7 +643,8 @@ private fun Scrim(
     color: Color,
     onDismiss: () -> Unit,
     visible: Boolean,
-    isShowReport:Boolean
+    isShowReport:Boolean,
+    scrimContent: @Composable ()-> Unit,
 ) {
     if (color.isSpecified) {
         val alpha by animateFloatAsState(
@@ -664,42 +662,73 @@ private fun Scrim(
         } else {
             Modifier
         }
-
         Canvas(
             Modifier
                 .fillMaxSize()
-                .then(dismissModifier)
+                .then(dismissModifier),
         ) {
-            Log.d("DEBUG_CANVAS_SIZE_BALAB",size.height.toString())
+            drawRect(color = color, alpha = alpha)
+        }
+        val config = LocalConfiguration.current
+
+        Box(Modifier
+            .fillMaxSize()
+            .then(dismissModifier), contentAlignment = Alignment.Center){
             if(isShowReport){
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color(0x00ffffff),
-                            Color(0x02000000),
-                            Color(0x4D000000),
-                            Color(0x4D000000),
-                            Color(0x4D000000),
-                            Color(0x4D000000),
-                            Color(0x4D000000),
-                            Color(0x4D000000),
-                            Color(0x4D000000),
-                            Color(0x4D000000),
-                        ),
-                        center = Offset(size.width/2, size.height/3f),
-                        tileMode = TileMode.Mirror,
-                        radius = 750f
-                    ),
-                    center = Offset(size.width/2, size.height/2.754f),
-                    radius= 1400f,
-                    alpha = alpha,
-                )
-            }else{
-                drawRect(color = color, alpha = alpha)
+                Box(Modifier
+                    .padding(bottom = (config.screenHeightDp/3).dp)
+                    .size(85.dp)
+                    .then(dismissModifier), contentAlignment = Alignment.BottomCenter){
+                    scrimContent()
+                }
             }
 
-
         }
+
+//        Canvas(
+//            Modifier
+//                .fillMaxSize()
+//                .then(dismissModifier),
+//        ) {
+//            Log.d("DEBUG_CANVAS_SIZE_BALAB",size.height.toString())
+//            if(isShowReport){
+///**
+// version 0.9.3 below
+// Circle gradiant transparent in center of scrim
+//----------------------------------------------------
+// */
+///*
+//                drawCircle(
+//                    brush = Brush.radialGradient(
+//                        colors = listOf(
+//                            Color(0x00ffffff),
+//                            Color(0x02000000),
+//                            Color(0x4D000000),
+//                            Color(0x4D000000),
+//                            Color(0x4D000000),
+//                            Color(0x4D000000),
+//                            Color(0x4D000000),
+//                            Color(0x4D000000),
+//                            Color(0x4D000000),
+//                            Color(0x4D000000),
+//                        ),
+//                        center = Offset(size.width/2, size.height/3f),
+//                        tileMode = TileMode.Mirror,
+//                        radius = 750f
+//                    ),
+//                    center = Offset(size.width/2, size.height/2.754f),
+//                    radius= 1400f,
+//                    alpha = alpha,
+//                )
+//
+// */
+//
+//                drawRect(color = color, alpha = alpha)
+//
+//            }else{
+//                drawRect(color = color, alpha = alpha)
+//            }
+//        }
     }
 }
 
@@ -718,7 +747,7 @@ object ModalBottomSheetDefaults {
      */
     val scrimColor: Color
         @Composable
-        get() = MaterialTheme.colors.onSurface.copy(alpha = 0.32f)
+        get() = MaterialTheme.colors.onSurface.copy(alpha = 0.50f)
 }
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -885,11 +914,11 @@ internal fun interface AnchorChangeHandler<T> {
 @ExperimentalMaterialApi
 internal class SwipeableV2State<T>(
     initialValue: T,
-    internal val animationSpec: AnimationSpec<Float> = com.orbital.cee.core.SwipeableV2Defaults.AnimationSpec,
+    internal val animationSpec: AnimationSpec<Float> = SwipeableV2Defaults.AnimationSpec,
     internal val confirmValueChange: (newValue: T) -> Boolean = { true },
     internal val positionalThreshold: Density.(totalDistance: Float) -> Float =
-        com.orbital.cee.core.SwipeableV2Defaults.PositionalThreshold,
-    internal val velocityThreshold: Dp = com.orbital.cee.core.SwipeableV2Defaults.VelocityThreshold,
+        SwipeableV2Defaults.PositionalThreshold,
+    internal val velocityThreshold: Dp = SwipeableV2Defaults.VelocityThreshold,
 ) {
 
     /**

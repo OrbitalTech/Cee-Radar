@@ -524,6 +524,21 @@ Users who are moderators can add or delete what normal users can plus these aler
 Static camera
 
 Average speed cameras</string>
+    <string name="lbl_road_pathhole">Pathhole</string>
+    <string name="lbl_reliability">Reliability</string>
+    <string name="lbl_very_High">Very High</string>
+    <string name="lbl_low">Low</string>
+    <string name="lbl_medium">Medium</string>
+    <string name="lbl_high">High</string>
+    <string name="lbl_by">By</string>
+    <string name="lbl_top_toast_nearest_report">in your way</string>
+    <string name="lbl_menu_hi_guest">Hi! Guest User</string>
+    <string name="lbl_menu_create_account">Create account to access all features</string>
+    <string name="lbl_menu_ceekerbottomshet_trust_level">Trust Level</string>
+    <string name="lbl_menu_ceekerbottomshet_number_of_reports">Reports</string>
+    <string name="lbl_menu_ceekerbottomshet_trust_point">Trust Points</string>
+    <string name="lbl_menu_ceekerbottomshet_points_next_level">Points to next level</string>
+    <string name="lbl_menu_ceekerbottomshet_as_you_help">as you help other people, you earn points for each contribution and get closer to the nesx level. lern more about</string>
 
 
 </resources>

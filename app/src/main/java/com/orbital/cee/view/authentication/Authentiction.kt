@@ -41,7 +41,6 @@ import com.google.firebase.auth.GoogleAuthProvider.getCredential
 import com.orbital.cee.R
 import com.orbital.cee.core.countryList
 import com.orbital.cee.model.Country
-import com.orbital.cee.helper.Screen
 import com.orbital.cee.model.Response
 import com.orbital.cee.utils.Utils.getCountryCode
 import com.orbital.cee.view.authentication.component.CountryPickerBottomSheet
@@ -169,7 +168,7 @@ fun Authentication(
                                         Text(text = selectedCountry!!.dialCode, color = Color.Black)
                                     }
                                     Icon(
-                                        painterResource(id = R.drawable.ic_arrow_dropdown),
+                                        painterResource(id = R.drawable.ic_arrow_down),
                                         contentDescription = "ic_down",
                                         modifier = Modifier.size(17.dp),
                                         tint = Color(0xFFE4E4E4)
@@ -223,7 +222,7 @@ fun Authentication(
                                             navController.navigate("verifyOtp/${selectedCountry!!.dialCode}/${phoneNumber.value}")
                                             isLoading = false
                                         }else{
-                                            errorMessage = it.serverMessage
+                                            errorMessage = it.message
                                             showErrorDialog = true
                                             isLoading = false
                                         }

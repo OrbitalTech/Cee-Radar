@@ -42,7 +42,6 @@ class DSRepositoryImpl @Inject constructor(@ApplicationContext private val conte
             data[MAX_SPEED] = uStatistics.maxSpeed
         }
     }
-
     override suspend fun retrieveStatistics() = context.datastore.data.map {data ->
         UserStatistics(
             alertedCount = data[ALERTED_COUNT] ?: 0,
@@ -50,7 +49,6 @@ class DSRepositoryImpl @Inject constructor(@ApplicationContext private val conte
             maxSpeed = data[MAX_SPEED] ?: 0,
         )
     }
-
     override suspend fun debugModeSave(isDebugMode: Boolean) {
         context.datastore.edit { data->
         data[DEBUG_MODE_PREF_KEY] = isDebugMode

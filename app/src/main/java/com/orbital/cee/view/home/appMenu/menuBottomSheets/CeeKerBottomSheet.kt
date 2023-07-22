@@ -66,14 +66,14 @@ fun CeeKerBottomSheet(userInfo: UserNew,myReportsCount: Int, onClickClose:()->Un
                 Spacer(modifier = Modifier.width(10.dp))
                 Column() {
                     Text(text = "Ceeker", fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = black)
-                    Text(text = "Trust Level : ${userInfo.userLevel ?: 0}", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = type_gray)
+                    Text(text = "${stringResource(id = R.string.lbl_menu_ceekerbottomshet_trust_level)} : ${userInfo.userLevel ?: 0}", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = type_gray)
                 }
             }
             Spacer(modifier = Modifier.height(28.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-                Text(modifier = Modifier.defaultMinSize(minWidth = 140.dp), text = "Trust Points", fontSize = 14.sp, color = black)
+                Text(modifier = Modifier.defaultMinSize(minWidth = 140.dp), text = stringResource(id = R.string.lbl_menu_ceekerbottomshet_trust_point), fontSize = 14.sp, color = black)
 
-                Text(text = "Reports", fontSize = 14.sp, color = black)
+                Text(text = stringResource(id = R.string.lbl_menu_ceekerbottomshet_number_of_reports), fontSize = 14.sp, color = black)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
@@ -103,16 +103,16 @@ fun CeeKerBottomSheet(userInfo: UserNew,myReportsCount: Int, onClickClose:()->Un
             }
             Spacer(modifier = Modifier.height(10.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "+${calculatePointRemainToNextLevel(userInfo.userPoint ?: 0)} Points to next level", fontSize = 14.sp, color = Color(0x65000000))
+                Text(text = "+${calculatePointRemainToNextLevel(userInfo.userPoint ?: 0)} ${stringResource(id = R.string.lbl_menu_ceekerbottomshet_points_next_level)}", fontSize = 14.sp, color = Color(0x65000000))
             }
             Spacer(modifier = Modifier.height(22.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "As you help other people, you earn points for each contribution and get closer to the next level. Learn more about", fontSize = 14.sp, color = Color(
+                Text(text = stringResource(id = R.string.lbl_menu_ceekerbottomshet_as_you_help), fontSize = 14.sp, color = Color(
                     0xFF000000))
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "User Tier & Trust level? ", style = androidx.compose.ui.text.TextStyle(textDecoration = TextDecoration.Underline),  fontWeight = FontWeight.Medium, fontSize = 16.sp, color = blurple)
+                Text(text = "User Tier & Trust level ", style = androidx.compose.ui.text.TextStyle(textDecoration = TextDecoration.Underline),  fontWeight = FontWeight.Medium, fontSize = 16.sp, color = blurple)
             }
             Spacer(modifier = Modifier.height(30.dp))
             Button(modifier = Modifier

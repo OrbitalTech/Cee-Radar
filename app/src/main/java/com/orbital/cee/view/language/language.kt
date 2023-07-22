@@ -60,7 +60,7 @@ fun language(model:HomeViewModel,onClickBack:()->Unit) {
             Text(text = stringResource(R.string.lbl_language_setting_appBar_title) , fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 20.sp)
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart){
                 TextButton(onClick = onClickBack, modifier = Modifier.padding(end = 12.dp)) {
-                    Icon(modifier = Modifier.size(22.dp).rotate(rotate), tint = Color.Black , painter = painterResource(id = R.drawable.ic_arrow_back), contentDescription ="" )
+                    Icon(modifier = Modifier.size(22.dp).rotate(rotate), tint = Color.Black , painter = painterResource(id = R.drawable.ic_arrow_left), contentDescription ="" )
                 }
             }
         }

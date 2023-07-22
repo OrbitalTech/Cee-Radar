@@ -1,12 +1,17 @@
 package com.orbital.cee.utils
 
 import android.content.Context
+import android.location.Address
 import android.location.Geocoder
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import com.orbital.cee.R
+import com.orbital.cee.core.MyLocationService
 import com.orbital.cee.model.UserPermission
 import com.orbital.cee.model.UserTiers
 import com.orbital.cee.ui.theme.blue
@@ -19,7 +24,12 @@ import com.orbital.cee.ui.theme.orange
 import com.orbital.cee.ui.theme.turquoise
 import com.orbital.cee.ui.theme.type_gray
 import com.orbital.cee.ui.theme.white
+import com.orbital.cee.ui.theme.yellow
 import com.orbital.cee.view.home.BottomSheets.SpeedLimits
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import okhttp3.internal.wait
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -40,21 +50,21 @@ class MetricsUtils {
                 "-"
             }
         }
-        fun getRemain(watchTime: Long?,dateTimeNow : Long?): String {
-            return if (watchTime != null && dateTimeNow != null) {
-                var tmpSeconds: Long = dateTimeNow - watchTime
-                var seconds =  1800 - tmpSeconds
-                var minute = seconds / 60
-                seconds %= 60
-                var hour = minute / 60
-                minute %= 60
-                var days = hour / 24
-                hour %= 24
-                /* String.format( "%02d", hour) + ":" +*/ String.format("%02d", minute) + ":" + String.format("%02d", seconds)
-            } else {
-                "-"
-            }
-        }
+//        fun getRemain(watchTime: Long?,dateTimeNow : Long?): String {
+//            return if (watchTime != null && dateTimeNow != null) {
+//                var tmpSeconds: Long = dateTimeNow - watchTime
+//                var seconds =  1800 - tmpSeconds
+//                var minute = seconds / 60
+//                seconds %= 60
+//                var hour = minute / 60
+//                minute %= 60
+//                var days = hour / 24
+//                hour %= 24
+//                /* String.format( "%02d", hour) + ":" +*/ String.format("%02d", minute) + ":" + String.format("%02d", seconds)
+//            } else {
+//                "-"
+//            }
+//        }
         fun getRemainSeconds(seconds : Long?): String {
             var _seconds = seconds
             return if (_seconds != null) {
@@ -80,22 +90,72 @@ class MetricsUtils {
         }
         fun getSeconds(startDate: Date?, finishDate: Date?): Long {
             return if (startDate != null && finishDate != null) {
-                var seconds: Long = TimeUnit.MILLISECONDS.toSeconds(finishDate.time - startDate.time)
+                val seconds: Long = TimeUnit.MILLISECONDS.toSeconds(finishDate.time - startDate.time)
                 seconds
             } else {
                0
             }
         }
-        fun getAddress(lat: Double, lng: Double, context: Context): String {
-            return try{
-                val geocoder = Geocoder(context)
-                val list = geocoder.getFromLocation(lat, lng, 1)
-                list?.get(0)?.getAddressLine(0) ?: "-"
 
-            }catch (e:Exception){
-                "Unknown"
+        suspend fun getAddress(lat: Double, lng: Double, context: Context) : String = coroutineScope {
+            val job = async {
+                try{
+                    val a = mutableStateOf("")
+                    val geocoder = Geocoder(context)
+                    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU){
+                        geocoder.getFromLocation(lat,lng,1,object : Geocoder.GeocodeListener{
+                            override fun onGeocode(addresses: MutableList<Address>) {
+                                a.value =  addresses[0].getAddressLine(0)
+                            }
+                            override fun onError(errorMessage: String?) {
+                                super.onError(errorMessage)
+                                 a.value = "Unknown"
+                            }
+                        })
+                    }else{
+                        val list = geocoder.getFromLocation(lat, lng, 1)
+                        a.value = list?.get(0)?.getAddressLine(0) ?: "-"
+                    }
+                    if (a.value!=""){
+                        a.value
+                    }else{
+                        delay(3000)
+                        a.value
+                    }
+
+                }catch (e:Exception){
+                      "Unknown"
+                }
             }
+            job.await()
         }
+//        fun getAddress(lat: Double, lng: Double, context: Context): String {
+//             try{
+//                val geocoder = Geocoder(context)
+//                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU){
+//                    geocoder.getFromLocation(lat,lng,1,object : Geocoder.GeocodeListener{
+//                        override fun onGeocode(addresses: MutableList<Address>) {
+//                            addresses[0].getAddressLine(0)
+//                        }
+//                        override fun onError(errorMessage: String?) {
+//                            super.onError(errorMessage)
+//                            return "Unknown"
+//                        }
+//
+//                    })
+//                }else{
+//                    val list = geocoder.getFromLocation(lat, lng, 1)
+//                    list?.get(0)?.getAddressLine(0) ?: "-"
+//                }
+//                val list = geocoder.getFromLocation(lat, lng, 1)
+//                list?.get(0)?.getAddressLine(0) ?: "-"
+//
+//
+//
+//            }catch (e:Exception){
+//                 return  "Unknown"
+//            }
+//        }
         fun isOnline(context: Context): Boolean {
             val connectivityManager =
                 context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -134,15 +194,15 @@ class MetricsUtils {
                 .map { allowedChars.random() }
                 .joinToString("")
         }
-        fun convertDateToLong(date: String): Long {
-            val df = SimpleDateFormat("yyyy.MM.dd HH:mm")
-            return df.parse(date).time
-        }
-        fun convertLongToTime(time: Long): String {
-            val date = Date(time)
-            val format = SimpleDateFormat("yyyy.MM.dd HH:mm")
-            return format.format(date)
-        }
+//        fun convertDateToLong(date: String): Long {
+//            val df = SimpleDateFormat("yyyy.MM.dd HH:mm", Locale.US)
+//            return df.parse(date)?.time ?: 0L
+//        }
+//        fun convertLongToTime(time: Long): String {
+//            val date = Date(time)
+//            val format = SimpleDateFormat("yyyy.MM.dd HH:mm", Locale.US)
+//            return format.format(date)
+//        }
         fun calculatePointRemainToNextLevel(currentPoint:Int):Int{
             return if (currentPoint >= 2800){
                 1000000 - currentPoint
@@ -453,6 +513,12 @@ class MetricsUtils {
                     color2 = Color(0xFFE84949),
                     title = context.getString(R.string.lbl_home_report_feedback_sheet_report_type_redlight),
                     icon = R.drawable.ic_trafic_light
+                )}
+                8->{ReportTheme(
+                    color1 = yellow,
+                    color2 = white,
+                    title = context.getString(R.string.lbl_road_pathhole),
+                    icon = R.drawable.ic_danger
                 )}
                 405->{ReportTheme(
                     color1 = type_gray,

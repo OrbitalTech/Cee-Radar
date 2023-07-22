@@ -257,4 +257,19 @@
     <string name="q_and_a_help_a18">لابردنی ڕیکلامەکان دەتوانیت ژمارەیەکی زۆر گەشت تۆمار بکەیت زانیاری زیاترت دەست دەکەوێت دەربارەی شێوازی لێخوڕینەکەت شێوازی گێچی خێرایی وهێمای سەر نەخشەی نوێ بکەرەوە</string>
     <string name="q_and_a_help_a19">پەنجە لەسەر دوگمەی بانگهێشت کردن دابگرە ولینکێکت بۆ دەکرێتەوە کە دەتوانیت لە ڕێیەوە هاوڕێکانت بانگهێشت بکەیت</string>
     <string name="q_and_a_help_a20">بەکارهێنەری ئاسایی دەتوانێت ئەم ڕاپۆرتانە دابنێت کامێرەی کاتی ڕووداوی هات وچۆ کاری ڕێگاوبان خاڵی پشکنین ئەو بەکارهێنەرانەی کە مۆدێرەیتەرن دەتوانن هەموو ئەو ڕاپۆرتانە دابنێن یاخود بسڕنەوە کە بەکارهێنەرانی ئاسایی دەتوانن دای بنێن لەگەڵ ئەمانەش کامێرەی جێگیر کامێرەی پۆینت تو پۆینت</string>
+    <string name="lbl_road_pathhole">چاڵی جادە</string>
+    <string name="lbl_reliability">متمانە</string>
+    <string name="lbl_very_High">زۆر بەرز</string>
+    <string name="lbl_low">نزم</string>
+    <string name="lbl_medium">ناوەند</string>
+    <string name="lbl_high">بەرز</string>
+    <string name="lbl_by">لەلایەن</string>
+    <string name="lbl_top_toast_nearest_report">لەسەر ڕێگاتە</string>
+    <string name="lbl_menu_hi_guest">سڵاو! میوانی بەڕێز</string>
+    <string name="lbl_menu_create_account">ئەکاونت دروست بکە بۆ بەکارهێنانی تەواوی تایبەتمەندیەکان</string>
+    <string name="lbl_menu_ceekerbottomshet_trust_level">ئاستی متمانە</string>
+    <string name="lbl_menu_ceekerbottomshet_number_of_reports">ژمارەی راپۆرتەکانم</string>
+    <string name="lbl_menu_ceekerbottomshet_trust_point">خاڵی متمانە</string>
+    <string name="lbl_menu_ceekerbottomshet_points_next_level">"خاڵی ماوە بۆ ئاستی داهاتو "</string>
+    <string name="lbl_menu_ceekerbottomshet_as_you_help">لەگەل یارمەتیدانی کەسانی تر، بۆ هەر بەشداریەک خاڵ بەدەست دەهێنیت و لە ئاستی داهاتوو نزیک دەبیتەوە. تیاتر بزانە دەربارەی.</string>
 </resources>

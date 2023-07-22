@@ -143,24 +143,11 @@ fun NewReportViewDetail(vModel : HomeViewModel,
     val reportUI = getReportUiByReportType(reportType =localReport.value?.reportType ?: 1, context = context)
     Box(modifier = Modifier
         .fillMaxWidth()
-        .height(
-            height = if (isShowFeedBackPanel.value) {
-                500.dp
-            } else {
-                if (isShowFeedBack.value) {
-                    470.dp
-                } else {
-                    330.dp
-                }
-
-            }
-        )
         .clip(shape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp))
         .background(color = Color.White), contentAlignment = Alignment.Center){
         if (false){
-
             Column(modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(15.dp)) {
                 Row(
                     Modifier
@@ -255,7 +242,7 @@ fun NewReportViewDetail(vModel : HomeViewModel,
             }
         }else{
             Column(modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(15.dp)) {
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -348,7 +335,6 @@ fun NewReportViewDetail(vModel : HomeViewModel,
                         }
 //                    Icon(painter = painterResource(id = R.drawable.ic_share), contentDescription = "", tint = Color(0XFF848484))
                     }
-
                 }
                 AnimatedVisibility(visible = !isShowFeedBackPanel.value, enter = slideInVertically(), exit = slideOutVertically()) {
                     Column {
@@ -370,7 +356,7 @@ fun NewReportViewDetail(vModel : HomeViewModel,
                                                 .clip(RoundedCornerShape(4.dp))
                                                 .shimmerEffect()){}
                                     }else{
-                                        Text(text ="By: ${if(reportOwnerInfo.value.userName.isBlank() || report.value.reportType > 4){ "Cee" }else{reportOwnerInfo.value.userName} }", fontSize = 16.sp,fontWeight = FontWeight.W600)
+                                        Text(text ="${stringResource(id = R.string.lbl_by)}: ${if(reportOwnerInfo.value.userName.isBlank() || report.value.reportType > 4){ "Cee" }else{reportOwnerInfo.value.userName} }", fontSize = 16.sp,fontWeight = FontWeight.W600)
                                         if (reportOwnerInfo.value.userName.isBlank() || reportOwnerInfo.value.userType == 2 || reportOwnerInfo.value.userType == 1){
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Icon(modifier = Modifier.size(18.dp),painter = painterResource(id = R.drawable.ic_verified_badge), contentDescription = "", tint = Color.Unspecified)
@@ -497,7 +483,7 @@ fun NewReportViewDetail(vModel : HomeViewModel,
 
                 if(isShowFeedBack.value){
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text(text = stringResource(id = R.string.lbl_home_report_feedback_sheet_title_approve) +" "+ reportUI.title +"?",fontWeight = FontWeight.W700, fontSize = 18.sp)
+                    Text(text ="${stringResource(id = R.string.lbl_home_report_feedback_sheet_title_approve)} ${reportUI.title}?",fontWeight = FontWeight.W700, fontSize = 18.sp)
                     Spacer(modifier = Modifier.height(5.dp))
                     Text(text = stringResource(id = R.string.lbl_home_report_feedback_sheet_description),fontWeight = FontWeight.W400,fontSize = 15.sp)
                     Spacer(modifier = Modifier.height(15.dp))
@@ -564,7 +550,9 @@ fun NewReportViewDetail(vModel : HomeViewModel,
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(40.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
+                }else{
+                    Spacer(modifier = Modifier.height(15.dp))
                 }
 
 

@@ -171,7 +171,7 @@ fun TripHistory( onClickBack:()->Unit, tripList : ArrayList<Trip?>?, onDeleteTri
                                         Box(modifier = Modifier.size(60.dp), contentAlignment = Alignment.Center) {
                                             Icon(modifier = Modifier
                                                 .size(22.dp)
-                                                .rotate(rotate), tint = Color(0XFF848484) , painter = painterResource(id = R.drawable.ic_arrow), contentDescription ="" )
+                                                .rotate(rotate), tint = Color(0XFF848484) , painter = painterResource(id = R.drawable.ic_arrow_left), contentDescription ="" )
                                         }
                                     }
                                 }

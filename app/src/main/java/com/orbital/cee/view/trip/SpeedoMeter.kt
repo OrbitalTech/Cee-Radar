@@ -161,7 +161,7 @@ fun Speed(
                         .fillMaxWidth()
                         .height(50.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onClickBack) {
-                        Icon(painter = painterResource(id = R.drawable.ic_arrow_back), tint = Color(0XFF848484),modifier = Modifier
+                        Icon(painter = painterResource(id = R.drawable.ic_arrow_left), tint = Color(0XFF848484),modifier = Modifier
                             .size(22.dp)
                             .rotate(rotate), contentDescription = "" )
                     }

@@ -34,6 +34,10 @@ import com.google.accompanist.navigation.animation.AnimatedNavHost
 import com.google.accompanist.navigation.animation.composable
 import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.google.android.gms.ads.*
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.gms.ads.rewarded.RewardedAd
+import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.android.gms.location.*
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
@@ -48,6 +52,7 @@ import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
 import com.mapbox.geojson.*
 import com.mapbox.maps.plugin.annotation.generated.*
+import com.orbital.cee.R
 import com.orbital.cee.core.Constants.DB_REF_USER
 import com.orbital.cee.core.*
 import com.orbital.cee.detectedactivity.DetectedActivityService
@@ -143,12 +148,6 @@ class HomeActivity : ComponentActivity() //,SensorEventListener
                 }
             }
         }
-//        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-//        wakeLock = powerManager.newWakeLock(
-//            PowerManager.SCREEN_DIM_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE,
-//            "Cee:WAKE_POWER_CEE_MAIN_SCREEN"
-//        )
-        //    @RequiresApi(Build.VERSION_CODES.S)
 
         isFirstLunch = true
         model.handler = Handler()
@@ -185,36 +184,11 @@ class HomeActivity : ComponentActivity() //,SensorEventListener
         setContent {
             val soundSta = model.soundStatus.observeAsState()
             soundSta.value?.let { Singlt.set(it) }
-            CEETheme(darkTheme = model.isDarkMode.value,langCode = langCode.value) {
+            CEETheme(darkTheme = model.isDarkMode.value,langCode = {langCode.value}) {
                 val navController = rememberAnimatedNavController()
                 AnimatedNavHost(navController, "home") {
                     composable("home",
-//                        deepLinks = listOf(
-//                            navDeepLink {
-//                                uriPattern = "https://cee-platform-87d21.web.app/{type}/{id}"
-//                                action = Intent.ACTION_VIEW
-//                            },
-//                            navDeepLink {
-//                                uriPattern = "https://cee-platform-87d21.web.app/{type}/{id}/{trip}"
-//                                action = Intent.ACTION_VIEW
-//                            }
-//                        ),
-//                        arguments = listOf(
-//                            navArgument("type"){
-//                                type = NavType.StringType
-//                            },
-//                            navArgument("id"){
-//                                type = NavType.StringType
-//                            },
-//                            navArgument("trip"){
-//                                type = NavType.StringType
-//                            }
-//                        )
-
-                    ) {entry ->
-//                        model.deepLinkActionType.value =  entry.arguments?.getString("type")
-//                        model.deepLinkFirstArg.value = entry.arguments?.getString("id")
-//                        model.deepLinkSecondArg.value = entry.arguments?.getString("trip")
+                    ) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colors.background
@@ -229,12 +203,6 @@ class HomeActivity : ComponentActivity() //,SensorEventListener
                                 }else{
                                     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                                 }
-//                                if (it.screenSleepTimeOutInSecond != 0f){
-//                                    Log.d("DEBUG_TIMEOUT_SLEEP_SCREEN", it.toString())
-//                                    wakeLock?.acquire(((it.screenSleepTimeOutInSecond*360)*1000L).toLong())
-//                                }else{
-//                                    wakeLock = null
-//                                }
                             }
                         }
                     }
@@ -257,7 +225,42 @@ class HomeActivity : ComponentActivity() //,SensorEventListener
                         )
                     }
                 }
+                val langCodee = model.langCode.observeAsState()
+                langCodee.value?.let {
+                    langCode.value = it
+                }
             }
+            val adRequest = AdRequest.Builder().build()
+            InterstitialAd.load(this, this.getString(R.string.interstitial_ad_three_stop_id) , adRequest, object : InterstitialAdLoadCallback() {
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    model.mInterstitialAd = null
+                }
+                override fun onAdLoaded(interstitialAd: InterstitialAd) {
+                    model.mInterstitialAd = interstitialAd
+                }
+            })
+            RewardedAd.load(this,this.getString(R.string.remove_ads_rewarded_video_id) ,adRequest,object : RewardedAdLoadCallback(){
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    model.mRewardedAd = null
+                    model.isRewardedVideoReady.value = false
+                }
+                override fun onAdLoaded(rewardedAd: RewardedAd) {
+                    model.mRewardedAd = rewardedAd
+                    model.isRewardedVideoReady.value = true
+//            Toast.makeText(context,"loaded",Toast.LENGTH_LONG).show()
+                }
+            })
+            model.mRewardedAd?.fullScreenContentCallback = object: FullScreenContentCallback() {
+                override fun onAdClicked() {}
+                override fun onAdDismissedFullScreenContent() {
+                    model.mRewardedAd = null
+                    model.isRewardedVideoReady.value = false
+                }
+                override fun onAdImpression() {}
+                override fun onAdShowedFullScreenContent() {}
+            }
+
+
         }
     }
     fun isHasSpeed(speed: Int) {

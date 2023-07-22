@@ -55,7 +55,6 @@ import com.orbital.cee.utils.MetricsUtils
 import com.orbital.cee.utils.MetricsUtils.Companion.getAddress
 import com.orbital.cee.utils.MetricsUtils.Companion.getRandomString
 import com.orbital.cee.view.home.components.showCustomDialog
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -122,7 +121,7 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
                                      }, modifier = Modifier.padding(end = 12.dp)) {
                     Icon(modifier = Modifier
                         .size(22.dp)
-                        .rotate(rotate), tint = Color.Black , painter = painterResource(id = R.drawable.ic_arrow_back), contentDescription ="" )
+                        .rotate(rotate), tint = Color.Black , painter = painterResource(id = R.drawable.ic_arrow_left), contentDescription ="" )
                 }
             }
         }
@@ -221,13 +220,22 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
                                         fileRef
                                             .putFile(file)
                                             .addOnSuccessListener {
-                                                val myUrl = "https://cee-platform-87d21.web.app/trip/${auth.currentUser?.uid}/${uniqueId}.trip"
+                                                val myUrl =
+                                                    "https://cee-platform-87d21.web.app/trip/${auth.currentUser?.uid}/${uniqueId}.trip"
                                                 val shareIntent = Intent()
                                                 shareIntent.action = Intent.ACTION_SEND
-                                                shareIntent.type="text/plain"
+                                                shareIntent.type = "text/plain"
                                                 shareIntent.putExtra(Intent.EXTRA_TEXT, myUrl)
-                                                shareIntent.putExtra(Intent.EXTRA_TITLE, "enjoy sharing your trips with your friends")
-                                                context.startActivity(Intent.createChooser(shareIntent,myUrl))
+                                                shareIntent.putExtra(
+                                                    Intent.EXTRA_TITLE,
+                                                    "enjoy sharing your trips with your friends"
+                                                )
+                                                context.startActivity(
+                                                    Intent.createChooser(
+                                                        shareIntent,
+                                                        myUrl
+                                                    )
+                                                )
                                                 fileRef.downloadUrl
                                                     .addOnSuccessListener { uri ->
                                                         val downloadUrl = uri.toString()
@@ -289,10 +297,23 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
                                         .fillMaxHeight(),
                                     verticalArrangement = Arrangement.SpaceBetween,
                                 ) {
-                                    Text(text =if(trip.listOfLatLon.size>1){ getAddress(trip.listOfLatLon[0].latitude(),trip.listOfLatLon[0].longitude(),context)}else{"unknown"},maxLines=2, modifier = Modifier
+                                    val a = remember{mutableStateOf("")}
+                                    val b = remember{mutableStateOf("")}
+                                    LaunchedEffect(Unit){
+                                        coroutineScope.launch {
+                                            if(trip.listOfLatLon.size>1){
+                                                a.value = getAddress(trip.listOfLatLon[0].latitude(),trip.listOfLatLon[0].longitude(),context)
+                                                b.value = getAddress(trip.listOfLatLon[trip.listOfLatLon.size-1].latitude(),trip.listOfLatLon[trip.listOfLatLon.size-1].longitude(),context)
+                                            }else{
+                                                a.value = "unknown"
+                                                b.value = "unknown"
+                                            }
+                                        }
+                                    }
+                                    Text(text =a.value ,maxLines=2, modifier = Modifier
                                         .fillMaxWidth(0.9f)
                                         .height(35.dp))
-                                    Text(text = if(trip.listOfLatLon.size>1){ getAddress(trip.listOfLatLon[trip.listOfLatLon.size-1].latitude(),trip.listOfLatLon[trip.listOfLatLon.size-1].longitude(),context)}else{"unknown"},maxLines=2, modifier = Modifier
+                                    Text(text = b.value ,maxLines=2, modifier = Modifier
                                         .fillMaxWidth(0.9f)
                                         .height(35.dp))
                                 }
@@ -373,7 +394,7 @@ fun TripDetail(trip:Trip,onClickBack:()->Unit,onClickDelete:()->Unit){
             showCustomDialog(
                 onNegativeClick = { isShowTripDeleteConfirmationDialog.value = false },
                 onPositiveClick = {
-                    GlobalScope.launch {
+                    coroutineScope.launch {
                         isShowTripDeleteConfirmationDialog.value = false
                         delay(1000)
                         onClickDelete.invoke()

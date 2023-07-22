@@ -2,13 +2,11 @@ package com.orbital.cee.data.repository
 
 import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.dataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.firebase.Timestamp
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.orbital.cee.core.AppSettingsSerializer
 import com.orbital.cee.core.Constants.CURSORID
 import com.orbital.cee.core.Constants.GEOFENCE_RADIUS_M
 import com.orbital.cee.core.Constants.LANGUAGE_CODE
@@ -25,7 +23,9 @@ import com.orbital.cee.core.Constants.PREFERENCE_USER_TYPE
 import com.orbital.cee.core.Constants.REPORT_COUNTER_PER_ONE_HOUR
 import com.orbital.cee.core.Constants.SAVE_LAST_REPORT
 import com.orbital.cee.core.Constants.SPEEDOMETERID
+import com.orbital.cee.model.AlarmLessReports
 import com.orbital.cee.model.Trip
+import com.orbital.cee.view.home.data_Store
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ViewModelScoped
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +35,7 @@ import java.io.IOException
 import javax.inject.Inject
 
 val Context.dataStore by preferencesDataStore(PREFERENCE_NAME)
+//val Context.data_Store by dataStore("alarm-less-reports.json", AppSettingsSerializer)
 
 @ViewModelScoped
 class DataStoreRepository @Inject constructor(@ApplicationContext private val context: Context) {
@@ -60,19 +61,20 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
     }
 
     private val dataStore: DataStore<Preferences> = context.dataStore
+    private val data_Store: DataStore<AlarmLessReports> = context.data_Store
 
-    suspend fun saveMaxSpeed(maxSpeed: Int) {
-        dataStore.edit { preference ->
-            if (preference[PreferenceKey.maxSpeed] != null){
-                if (preference[PreferenceKey.maxSpeed]!! < maxSpeed){
-                    preference[PreferenceKey.maxSpeed] = maxSpeed
-                }
-            }else{
-                preference[PreferenceKey.maxSpeed] = maxSpeed
-            }
-            //preference[PreferenceKey.maxSpeed] = maxSpeed
-        }
-    }
+//    suspend fun saveMaxSpeed(maxSpeed: Int) {
+//        dataStore.edit { preference ->
+//            if (preference[PreferenceKey.maxSpeed] != null){
+//                if (preference[PreferenceKey.maxSpeed]!! < maxSpeed){
+//                    preference[PreferenceKey.maxSpeed] = maxSpeed
+//                }
+//            }else{
+//                preference[PreferenceKey.maxSpeed] = maxSpeed
+//            }
+//            //preference[PreferenceKey.maxSpeed] = maxSpeed
+//        }
+//    }
     suspend fun updateSoundPreferences(soundState: Int) {
         dataStore.edit { preference ->
             preference[PreferenceKey.sound] = soundState
@@ -145,13 +147,13 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
             preference[PreferenceKey.firstLaunch] = firstLaunch
         }
     }
-    suspend fun resetStatistics() {
-        dataStore.edit { preference ->
-            preference[PreferenceKey.alertCount] = 0
-            preference[PreferenceKey.distance] = 0f
-            preference[PreferenceKey.maxSpeed] = 0
-        }
-    }
+//    suspend fun resetStatistics() {
+//        dataStore.edit { preference ->
+//            preference[PreferenceKey.alertCount] = 0
+//            preference[PreferenceKey.distance] = 0f
+//            preference[PreferenceKey.maxSpeed] = 0
+//        }
+//    }
     suspend fun saveCredential(otp: String,phoneNumber:String,cCode:String) {
         dataStore.edit { preference ->
             preference[PreferenceKey.credential] = otp
@@ -176,31 +178,42 @@ class DataStoreRepository @Inject constructor(@ApplicationContext private val co
             val firstLaunch = preference[PreferenceKey.firstLaunch] ?: true
             firstLaunch
         }
+    val readMuted: Flow<AlarmLessReports> = data_Store.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(AlarmLessReports())
+            } else {
+                throw exception
+            }
+        }
+        .map { preference ->
+            preference
+        }
 
-    val readMaxSpeed: Flow<Int> = dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preference ->
-            val firstLaunch = preference[PreferenceKey.maxSpeed] ?: 0
-            firstLaunch
-        }
-    val readAlertsCount: Flow<Int> = dataStore.data
-        .catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }
-        .map { preference ->
-            val firstLaunch = preference[PreferenceKey.alertCount] ?: 0
-            firstLaunch
-        }
+//    val readMaxSpeed: Flow<Int> = dataStore.data
+//        .catch { exception ->
+//            if (exception is IOException) {
+//                emit(emptyPreferences())
+//            } else {
+//                throw exception
+//            }
+//        }
+//        .map { preference ->
+//            val firstLaunch = preference[PreferenceKey.maxSpeed] ?: 0
+//            firstLaunch
+//        }
+//    val readAlertsCount: Flow<Int> = dataStore.data
+//        .catch { exception ->
+//            if (exception is IOException) {
+//                emit(emptyPreferences())
+//            } else {
+//                throw exception
+//            }
+//        }
+//        .map { preference ->
+//            val firstLaunch = preference[PreferenceKey.alertCount] ?: 0
+//            firstLaunch
+//        }
     val reportCountPerOneHour: Flow<Int> = dataStore.data
         .catch { exception ->
             if (exception is IOException) {

@@ -1,9 +1,6 @@
 package com.orbital.cee.view.authentication.verifyOTP
 
-import android.content.Intent
-import android.graphics.Rect
 import android.os.Build
-import android.os.CountDownTimer
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -16,15 +13,12 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -39,7 +33,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.airbnb.lottie.compose.*
 import com.orbital.cee.R
@@ -47,8 +40,6 @@ import com.orbital.cee.view.authentication.AuthenticationViewModel
 import com.orbital.cee.view.authentication.component.DisplayResponseMessage
 import com.orbital.cee.view.authentication.ShowErrorDialog
 import com.orbital.cee.view.authentication.component.myOtpComposableOutlined
-import com.orbital.cee.view.home.HomeActivity
-import com.orbital.cee.view.home.HomeViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.*
@@ -136,7 +127,7 @@ fun VerifyOTP(
                                     .fillMaxWidth()
                                     .padding(20.dp),
                                 horizontalArrangement = Arrangement.Start) {
-                                Icon(painterResource(id = R.drawable.ic_arrow_back), modifier = Modifier
+                                Icon(painterResource(id = R.drawable.ic_arrow_left), modifier = Modifier
                                     .size(18.dp)
                                     .clickable { navController.popBackStack() }, contentDescription = "", tint = Color(0xFFA7A7A7))
                             }
@@ -217,7 +208,7 @@ fun VerifyOTP(
                                                             isLoading = false
                                                         }else{
                                                             showErrorDialog = true
-                                                            errorMessage = it.serverMessage
+                                                            errorMessage = it.message
                                                             isLoading = false
                                                         }
 
@@ -227,7 +218,7 @@ fun VerifyOTP(
                                             }
                                         }else{
                                             showErrorDialog = true
-                                            errorMessage = responseDto.serverMessage
+                                            errorMessage = responseDto.message
                                             isLoading = false
                                             //viewModel.singOut()
                                             //navController.navigate(Screen.Authentication.route)
@@ -269,14 +260,14 @@ fun VerifyOTP(
                                         coroutineScope.launch {
                                             viewModel.sendOTP(countryCode,phoneNumber,context).collect{
                                                 if(it.isSuccess){
-                                                    Toast.makeText(context, it.serverMessage,Toast.LENGTH_LONG).show()
+                                                    Toast.makeText(context, it.message,Toast.LENGTH_LONG).show()
                                                     myTimer()
                                                 }else{
                                                     showErrorDialog = true
-                                                    errorMessage = it.serverMessage
+                                                    errorMessage = it.message
                                                     isEnableButtonResend.value = true
                                                 }
-                                                Log.d("MSG-32",it.serverMessage)
+                                                Log.d("MSG-32",it.message)
                                             }
                                         }
                                     })

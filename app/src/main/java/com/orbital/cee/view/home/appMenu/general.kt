@@ -101,7 +101,7 @@ fun General(model:HomeViewModel,onClickBack:()->Unit){
                             onClick = onClickBack
                         )
                         .size(20.dp)
-                        .rotate(rotate), tint = Color.Gray , painter = painterResource(id = R.drawable.ic_arrow_back), contentDescription ="" )
+                        .rotate(rotate), tint = Color.Gray , painter = painterResource(id = R.drawable.ic_arrow_left), contentDescription ="" )
                 }
             }
 

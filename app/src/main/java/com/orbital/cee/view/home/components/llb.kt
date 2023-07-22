@@ -1,5 +1,6 @@
 package com.orbital.cee.view.home.components
 
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -20,9 +21,15 @@ import kotlinx.coroutines.delay
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Button
 import androidx.compose.material.Text
+import androidx.compose.material.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -221,34 +228,76 @@ import com.orbital.cee.utils.Utils.dpToPx
 //
 //}
 
+
+
 @Preview
 @Composable
-fun innerShad(){
-    val context = LocalContext.current
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0x03FFFFFF),
-                    Color(0x0DFFFFFF),
-                    Color(0xFFFFFFFF),
-                    Color(0xFFFFFFFF),
-                    Color(0xFFFFFFFF),
-                    Color(0xFFFFFFFF),
-                    Color(0xFFFFFFFF),
-                    Color(0xFFFFFFFF),
-                    Color(0xFFFFFFFF),
-
-                ),
-                center = Offset(size.width/2, size.height/2.754f),
-                tileMode = TileMode.Mirror,
-                radius = 550f
-            ),
-            center = Offset(size.width/2, size.height/2.754f),
-            radius= 1400f,
-        )
+fun BottomBar() {
+    val textFieldValue = remember {
+        mutableStateOf("abc")
     }
+    Box(
+        modifier = Modifier
+            .size(400.dp)
+            .clickable(onClick = {})
+            .background(color = red, shape = RoundedCornerShape(topEnd = 15.dp))
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(8.dp)
+                .fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 40.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "hey",color = Color.White)
+                Button(onClick = { /*TODO*/ }) {
+                    Text(text = "Click")
+                }
+                TextField(value = textFieldValue.value, onValueChange = { changedValue ->
+                    textFieldValue.value = changedValue
+                    Log.d("LIB_DEBUG", changedValue)
+                })
+            }
+            Row() {
+                Text(text = "hey")
+            }
+        }
+    }
+
 }
+
+
+
+//    val context = LocalContext.current
+//    Canvas(modifier = Modifier.fillMaxSize()) {
+//        drawCircle(
+//            brush = Brush.radialGradient(
+//                colors = listOf(
+//                    Color(0x03FFFFFF),
+//                    Color(0x0DFFFFFF),
+//                    Color(0xFFFFFFFF),
+//                    Color(0xFFFFFFFF),
+//                    Color(0xFFFFFFFF),
+//                    Color(0xFFFFFFFF),
+//                    Color(0xFFFFFFFF),
+//                    Color(0xFFFFFFFF),
+//                    Color(0xFFFFFFFF),
+//
+//                ),
+//                center = Offset(size.width/2, size.height/2.754f),
+//                tileMode = TileMode.Mirror,
+//                radius = 550f
+//            ),
+//            center = Offset(size.width/2, size.height/2.754f),
+//            radius= 1400f,
+//        )
+//    }
+//}
 
 @Composable
 private fun BorderProgressBar() {

@@ -54,13 +54,17 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.orbital.cee.R
 import com.orbital.cee.core.Constants
+import com.orbital.cee.core.GeofenceBroadcastReceiver
 import com.orbital.cee.core.MyLocationService
 import com.orbital.cee.core.MyLocationService.LSS.speed
 import com.orbital.cee.model.UserTiers
 import com.orbital.cee.ui.theme.black
+import com.orbital.cee.ui.theme.blurple
 import com.orbital.cee.ui.theme.light_gray
+import com.orbital.cee.ui.theme.light_purple
 import com.orbital.cee.ui.theme.red
 import com.orbital.cee.ui.theme.white
+import com.orbital.cee.view.pressClickEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -113,7 +117,7 @@ fun NewBottomBar(
                                 .border(width = 1.dp, color = light_gray, shape = CircleShape)
                                 .background(color = Color.White, shape = CircleShape), contentAlignment = Alignment.Center){
                                 Speedometer(progressAnimationValue)
-                                Text(text = "${speed.value}", fontSize = 35.sp, fontWeight = FontWeight.Bold, color = black)
+                                Text(text = "${speed.value}", fontSize = 35.sp, fontWeight = FontWeight.Bold, color = if(GeofenceBroadcastReceiver.GBRS.GeoId.value != null){red}else{black}, fontFamily = FontFamily(Font(R.font.bebas_neue_pro_bold)))
                             }
                             MyLocationService.GlobalStreetSpeed.streetSpeedLimit.value?.let {
                                 streetSpeed.value = it.toInt()
@@ -128,6 +132,7 @@ fun NewBottomBar(
                             }
                         }else{
                             Box(modifier = Modifier
+                                .pressClickEffect()
                                 .clickable(
                                     onClick = onClickSpeedometer,
                                     indication = null,
@@ -135,10 +140,7 @@ fun NewBottomBar(
                                 .size(89.dp)
                                 .border(width = 6.dp, color = white, shape = CircleShape)
                                 .background(color = red, shape = CircleShape), contentAlignment = Alignment.Center){
-                                Text(text = "${speed.value}", fontSize = 35.sp, fontWeight = FontWeight.Bold, color = white, fontFamily = FontFamily(
-                                    Font(R.font.bebas_neue_pro_bold)
-                                )
-                                )
+                                Text(text = "${speed.value}", fontSize = 35.sp, fontWeight = FontWeight.Bold, color = white, fontFamily = FontFamily(Font(R.font.bebas_neue_pro_bold)))
                             }
                         }
                     }
@@ -152,6 +154,7 @@ fun NewBottomBar(
                         Box(modifier = Modifier
                             .size(65.dp)
                             .background(color = Color.White, shape = CircleShape)
+                            .pressClickEffect()
                             .clickable(
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() },
@@ -171,7 +174,8 @@ fun NewBottomBar(
             }
             Row(modifier = Modifier
                 .width(119.dp)
-                .height(68.dp)
+                .height(78.dp)
+                .padding(top = 15.dp)
                 .background(color = Color.White, shape = RoundedCornerShape(34.dp))){
                 Box(modifier = Modifier
                     .fillMaxWidth(0.5f)
@@ -208,7 +212,7 @@ fun NewBottomBar(
             }
         }
         val bottomSpaceValue by animateFloatAsState(
-            targetValue = (heightNabBottom.value+10).toFloat(),
+            targetValue = (heightNabBottom.value+30).toFloat(),
             animationSpec = tween(durationMillis = 1200, easing = FastOutSlowInEasing)
         )
         Spacer(modifier = Modifier.height(bottomSpaceValue.dp))
@@ -223,8 +227,8 @@ fun Speedometer(value : Float){
         drawArc(
             brush = Brush.linearGradient(
                 colors = listOf(
-                    Color(0xFFD6D6D6),
-                    Color(0xFFD6D6D6),
+                    light_purple,
+                    light_purple,
                 )
             ),
             startAngle = 134.5f,
@@ -238,8 +242,8 @@ fun Speedometer(value : Float){
         drawArc(
             brush = Brush.linearGradient(
                 colors = listOf(
-                    Color(0xFF495CE8) ,
-                    Color(0xFF495CE8) ,
+                    if(GeofenceBroadcastReceiver.GBRS.GeoId.value != null){red}else{blurple} ,
+                    if(GeofenceBroadcastReceiver.GBRS.GeoId.value != null){red}else{blurple} ,
                 )
             ),
             startAngle = 135f,
