@@ -230,9 +230,9 @@ import com.orbital.cee.utils.Utils.dpToPx
 
 
 
-@Preview
+//@Preview
 @Composable
-fun BottomBar() {
+fun BottomBar(a:Int) {
     val textFieldValue = remember {
         mutableStateOf("abc")
     }
@@ -270,7 +270,11 @@ fun BottomBar() {
     }
 
 }
-
+@Preview
+@Composable
+fun aPriview(){
+    BottomBar(5)
+}
 
 
 //    val context = LocalContext.current

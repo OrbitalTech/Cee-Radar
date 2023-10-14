@@ -169,7 +169,7 @@ class HomeActivity : ComponentActivity() //,SensorEventListener
         remoteConfig!!.fetchAndActivate()
         model.reportSightRadius.value = remoteConfig!!.getLong("reportSightRadius")
         appUpdate = AppUpdateManagerFactory.create(this)
-        callInAppUpdate()
+//        callInAppUpdate()
 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         WindowCompat.setDecorFitsSystemWindows(window, false)

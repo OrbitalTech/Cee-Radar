@@ -42,6 +42,8 @@ import com.orbital.cee.model.UserTiers
 import com.orbital.cee.ui.theme.blurple
 import com.orbital.cee.ui.theme.red
 import com.orbital.cee.utils.MetricsUtils.Companion.getReportUiByReportType
+import com.orbital.cee.utils.Utils.getNavigatingBarHeight
+import com.orbital.cee.utils.Utils.pxToDp
 import com.orbital.cee.view.home.HomeViewModel
 import com.orbital.cee.view.home.appMenu.componenets.radio
 import com.orbital.cee.view.home.UserDao
@@ -67,7 +69,9 @@ fun NewReportViewDetail(vModel : HomeViewModel,
                         onEditSpeedLimit: (reportId : String,speed:Int?)->Unit,
                         onClickSendNotification:(userId :String)->Unit
 ){
+
     val isLoading = remember { mutableStateOf(true) }
+    val bottomNavigationBarHeight = remember { mutableStateOf(0) }
     val isError = remember { mutableStateOf(false) }
     val context = LocalContext.current
     val isLike = remember { mutableStateOf<Boolean?>(null) }
@@ -85,6 +89,9 @@ fun NewReportViewDetail(vModel : HomeViewModel,
         MyLocationService.LSR.allMutedReports.addAll(mutedReports.mutedReports)
     }else{
         MyLocationService.LSR.allMutedReports.clear()
+    }
+    LaunchedEffect(Unit){
+        bottomNavigationBarHeight.value = pxToDp(getNavigatingBarHeight(context))
     }
 
     val scroll = rememberScrollState()
@@ -550,9 +557,9 @@ fun NewReportViewDetail(vModel : HomeViewModel,
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height((bottomNavigationBarHeight.value + 10).dp))
                 }else{
-                    Spacer(modifier = Modifier.height(15.dp))
+                    Spacer(modifier = Modifier.height((bottomNavigationBarHeight.value + 10).dp))
                 }
 
 

@@ -971,11 +971,13 @@ class HomeViewModel @Inject  constructor(
             val center =  GeoLocation(latt, lonn)
             val radiusInM = radius * 1000.0
             val bounds = GeoFireUtils.getGeoHashQueryBounds(center, radiusInM)
-//            val tasks = arrayListOf<Task<QuerySnapshot>>()
             geofencingClient.removeGeofences(geofencePendingIntent)
+
             Log.d("BOUNDSSIZE",bounds.size.toString())
             val source = Source.CACHE
             for ((i, b) in bounds.withIndex()) {
+                Log.d("BOUNDS_SIZE_TEST_ATOZ_POLO","${b.startHash} - ${b.endHash}")
+
                 val q = db.collection(if(!isDebugMode.value!!){DB_REF_REPORT}else{ DB_REF_REPORT_DEBUG })
                     .orderBy("g")
                     .startAt(b.startHash)

@@ -423,6 +423,9 @@ class MyLocationService: Service() {
         startForeground(1, notification.build())
     }
 
+    var a : String =""
+
+
     var prevId = ""
     var report : NewReport? = null
     private suspend fun findReport(rId: String) : NewReport? {

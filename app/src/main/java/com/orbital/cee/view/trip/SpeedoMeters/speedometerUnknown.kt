@@ -25,6 +25,12 @@ import kotlin.math.sin
 @Composable
 fun speedometerUnknown(value:Float){
     val conf = LocalConfiguration.current
+
+
+    val a = remember {
+        mutableStateOf("")
+    }
+
     Canvas(
         Modifier.fillMaxSize()
     ) {

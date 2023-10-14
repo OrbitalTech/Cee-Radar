@@ -52,9 +52,10 @@ fun SpeedometerHITEX(value:Float,speed:Int,bearing:Float,isNearReport:Boolean,re
     val df = DecimalFormat("#.##")
     df.roundingMode = RoundingMode.DOWN
 
+
     val reportUI = MetricsUtils.getReportUiByReportType(reportType , context)
     Box(modifier = Modifier
-        .size((415f.coerceAtMost(conf.screenWidthDp.toFloat())-60).dp)
+        .size((415f.coerceAtMost(conf.screenWidthDp.toFloat()) - 60).dp)
         .border(
             width = 1.dp,
             color = Color.Black.copy(alpha = 0.08f),

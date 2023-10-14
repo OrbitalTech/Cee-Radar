@@ -41,7 +41,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.flexcode.inapppurchasescompose.InAppPurchasesHelper
+//import com.flexcode.inapppurchasescompose.InAppPurchasesHelper
 import com.orbital.cee.R
 import com.orbital.cee.ui.theme.black
 import com.orbital.cee.ui.theme.blurple
@@ -56,8 +56,8 @@ fun SubscriptionPlan(onClickClose:()->Unit,onSubscriptionError:(title:String,des
 
     val context = LocalContext.current
 
-    val billingPurchaseHelper = InAppPurchasesHelper(context as Activity,"test_product")
-    billingPurchaseHelper.setUpBillingPurchases()
+//    val billingPurchaseHelper = InAppPurchasesHelper(context as Activity,"test_product")
+//    billingPurchaseHelper.setUpBillingPurchases()
 
 
     Column(modifier = Modifier
@@ -324,7 +324,7 @@ fun SubscriptionPlan(onClickClose:()->Unit,onSubscriptionError:(title:String,des
             .fillMaxWidth()
             .height(56.dp), onClick = {
             try {
-                billingPurchaseHelper.initializePurchase()
+//                billingPurchaseHelper.initializePurchase()
             }catch (e : Exception){
                 onSubscriptionError("Purchase was not completed","There was a connection error، the purchase cannot be completed at this time, due to some issues beyond our control, please try again later.")
             }
