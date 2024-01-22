@@ -292,12 +292,13 @@ class HomeActivity : ComponentActivity() //,SensorEventListener
             }
         }
     }
-    @RequiresApi(Build.VERSION_CODES.S)
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onResume() {
         super.onResume()
         inProgressUpdate()
         startLocationUpdate()
-        registerReceiver(transitionBroadcastReceiver, IntentFilter(TRANSITIONS_RECEIVER_ACTION))
+        registerReceiver(transitionBroadcastReceiver, IntentFilter(TRANSITIONS_RECEIVER_ACTION),
+            RECEIVER_NOT_EXPORTED)
         mAuth.currentUser?.let {
             val user : HashMap<String, Any> = HashMap<String, Any>()
             FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->

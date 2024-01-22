@@ -20,7 +20,7 @@ android {
         applicationId "com.orbital.cee"
         minSdk 28
         targetSdk 34
-        versionCode 203
+        versionCode 204
         versionName "0.9.9.5"
         multiDexEnabled true
         buildConfigField("String","WEB_CLIENT_ID",'"663760174892-er5j8bo3vt393im1ubbkb80ag26flqee.apps.googleusercontent.com"')
